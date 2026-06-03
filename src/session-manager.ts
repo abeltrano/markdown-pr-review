@@ -153,11 +153,18 @@ export class SessionManager {
         const scriptUri = panel.webview.asWebviewUri(
             vscode.Uri.joinPath(distRoot, 'views', 'rendered-view', 'main.js')
         );
-        panel.webview.html = renderedViewHtml({ csp, nonce, scriptUri: scriptUri.toString() });
 
+        // Register the message handler BEFORE setting webview.html. The
+        // setter kicks off iframe creation + script load asynchronously,
+        // and main.ts may post 'ready' before this turn yields control —
+        // any message arriving without an onDidReceiveMessage handler is
+        // dropped silently. (Observed empirically: a missed 'ready'
+        // wedges attachRenderedView forever on readyPromise.)
         panel.webview.onDidReceiveMessage((msg: RenderedViewToHost) => {
             void this.handleRenderedViewMessage(uriKey, msg);
         });
+
+        panel.webview.html = renderedViewHtml({ csp, nonce, scriptUri: scriptUri.toString() });
 
         // Kick off head + base fetches in parallel so the base fetch can
         // overlap network latency with the head fetch + initial render.
@@ -211,12 +218,35 @@ export class SessionManager {
             // Block on the webview's 'ready' signal. If the message listener
             // is not yet attached when we postMessage, the event is silently
             // dropped (no DOM listener => no handler runs). Always wait.
+            // Safety watchdog: if 'ready' never arrives (e.g., main.ts
+            // crashed at load), proceed after 5s so the user still gets
+            // SOMETHING — postMessage may end up dropped but they will see
+            // either rendered content or the unchanged Loading… banner
+            // instead of an apparently-frozen tab.
             const waitForReadyStart = Date.now();
-            await readyPromise;
-            this.log.info('Init waited for ready.', {
-                filePath,
-                ms: Date.now() - waitForReadyStart
-            });
+            const READY_WATCHDOG_MS = 5_000;
+            let readyArrived = true;
+            await Promise.race([
+                readyPromise,
+                new Promise<void>((resolve) =>
+                    setTimeout(() => {
+                        readyArrived = false;
+                        resolve();
+                    }, READY_WATCHDOG_MS)
+                )
+            ]);
+            if (!readyArrived) {
+                this.log.warn(
+                    `Webview 'ready' did not arrive within ${READY_WATCHDOG_MS}ms; ` +
+                        'posting init anyway (may be lost).',
+                    { filePath }
+                );
+            } else {
+                this.log.info('Init waited for ready.', {
+                    filePath,
+                    ms: Date.now() - waitForReadyStart
+                });
+            }
             const initPostStartedAt = Date.now();
             const postInitPromise = Promise.resolve(panel.webview.postMessage({
                 type: 'init',
