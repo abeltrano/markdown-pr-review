@@ -1,0 +1,53 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    commit-message:
+      prefix: deps
+      include: scope
+    labels:
+      - dependencies
+    groups:
+      types:
+        patterns:
+          - "@types/*"
+      eslint:
+        patterns:
+          - eslint
+          - "@eslint/*"
+          - typescript-eslint
+      typescript:
+        patterns:
+          - typescript
+          - tsx
+          - ts-node
+          - tsconfig-paths
+      mocha:
+        patterns:
+          - mocha
+          - "@types/mocha"
+          - chai
+          - "@types/chai"
+      vscode:
+        patterns:
+          - "@types/vscode"
+          - "@vscode/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+      include: scope
+    labels:
+      - dependencies
+      - github-actions

@@ -1,0 +1,98 @@
+name: Bug report
+description: Something doesn't work the way you expect.
+title: "[bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report! The more of this
+        form you can fill in, the faster the bug can be reproduced and
+        fixed.
+
+  - type: input
+    id: ext-version
+    attributes:
+      label: Extension version
+      description: |
+        Find it in the Extensions side bar, or run:
+        `code --list-extensions --show-versions | findstr markdown-pr-review`
+      placeholder: e.g. 0.4.15
+    validations:
+      required: true
+
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code version
+      description: From **Help → About** (Code → About on macOS).
+      placeholder: e.g. 1.95.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ado-type
+    attributes:
+      label: Azure DevOps host type
+      options:
+        - Azure DevOps Services (dev.azure.com)
+        - Azure DevOps Server (on-premises)
+        - Not applicable
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: |
+        Describe the bug — what did you do, what did you expect, what
+        happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open PR …
+        2. Click …
+        3. See error …
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output channel logs
+      description: |
+        From the **Output** panel, switch to channel **Markdown PR
+        Review** and paste the relevant lines.
+
+        **Please redact any tokens or org/project names you'd rather
+        not share publicly** before posting.
+      render: shell
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I've searched existing issues and this isn't a duplicate.
+          required: true
+        - label: I'm running the latest published version.
+          required: true

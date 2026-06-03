@@ -1,0 +1,28 @@
+# Normalize line endings to LF on commit; check out as LF on every
+# platform so Windows authors and Linux/macOS contributors never fight
+# over CRLF noise.
+* text=auto eol=lf
+
+# Treat known binary formats as binary so git does not attempt EOL
+# munging or surface them as text in diffs.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.vsix  binary
+*.zip   binary
+*.gz    binary
+*.tar   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+
+# SVG is text — keep it diffable.
+*.svg   text eol=lf
+
+# Lockfile churn is expected — collapse it in PR review by default.
+package-lock.json linguist-generated=true
