@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-This design specifies the implementation architecture for the ADO Markdown PR Reviewer Visual Studio Code extension. It is the design counterpart to `requirements.md` v0.3 (REQ-CORE-*, REQ-COMMENT-*, REQ-AUTH-*, REQ-DIFF-*, REQ-UX-*, REQ-ERR-*, REQ-NFR-*) in this folder. The extension lets a single reviewer fetch a markdown file from an Azure DevOps pull request, render it (with Mermaid diagrams) in a sandboxed VS Code webview, **select text** in the rendered view to author a new comment, and post that comment back to ADO as a PR comment thread anchored to the correct raw line range.
+This design specifies the implementation architecture for the ADO Markdown PR Reviewer Visual Studio Code extension. It is the design counterpart to [`requirements.md`](requirements.md) v0.3 (REQ-CORE-*, REQ-COMMENT-*, REQ-AUTH-*, REQ-DIFF-*, REQ-UX-*, REQ-ERR-*, REQ-NFR-*) in this folder. The extension lets a single reviewer fetch a markdown file from an Azure DevOps pull request, render it (with Mermaid diagrams) in a sandboxed VS Code webview, **select text** in the rendered view to author a new comment, and post that comment back to ADO as a PR comment thread anchored to the correct raw line range.
 
 The dominant design challenge is the **round-trip** between rendered content (where the human reasons) and raw line ranges (where ADO threads anchor). This design solves it in two coordinated layers: (1) `markdown-it`'s native block-level source maps annotate every rendered DOM block with `data-source-line-start`/`data-source-line-end` attributes; (2) a **selection mapper** in the extension host takes the reviewer's rendered-text selection and the containing block's raw source, normalizes both, and locates the selection's precise position in the raw source. The resulting precise line/offset range becomes the ADO `threadContext.rightFileStart`/`rightFileEnd`. When precise mapping isn't feasible (selection spans multiple blocks, contains a Mermaid diagram, or matches non-uniquely in normalized raw text), it falls back deterministically to the smallest-containing-block range, logging the fallback to the output channel so the behavior is observable.
 
@@ -487,7 +487,7 @@ The `when` clauses `adoMdReview.sessionActive` and `adoMdReview.renderedViewFocu
 
 ### 4.2 Data Model
 
-All types defined in `src/types.ts`, exported throughout the extension host and (a subset) embedded in the webview bundle for type-checking via shared TypeScript project references.
+All types defined in [`src/types.ts`](../src/types.ts), exported throughout the extension host and (a subset) embedded in the webview bundle for type-checking via shared TypeScript project references.
 
 ```typescript
 interface PullRequestRef {
@@ -824,7 +824,7 @@ Selection state is **transient**: snapshotted in the rendered-view webview at `m
 
 ### Content Security Policy (NFR-SEC-001)
 
-Both webviews carry a CSP built by the same `csp.ts` helper at panel-creation time. Each panel gets its own per-instance nonce. The Rendered-View Webview policy:
+Both webviews carry a CSP built by the same [`csp.ts`](../src/views/csp.ts) helper at panel-creation time. Each panel gets its own per-instance nonce. The Rendered-View Webview policy:
 
 ```
 default-src 'none';
@@ -903,7 +903,7 @@ connect-src 'none';
 
 ### Project layout
 
-Implementation language and layout are TypeScript with the standard VS Code extension structure (REQ-NFR-MAINT-001): `package.json` with `contributes`, `src/extension.ts` activate/deactivate, bundled via esbuild (per §5).
+Implementation language and layout are TypeScript with the standard VS Code extension structure (REQ-NFR-MAINT-001): [`package.json`](../package.json) with `contributes`, [`src/extension.ts`](../src/extension.ts) activate/deactivate, bundled via esbuild (per §5).
 
 ```
 adomarkdownprreviewer/

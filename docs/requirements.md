@@ -153,7 +153,7 @@ The extension targets the reviewer running it locally; comments it posts are rou
 
 **REQ-COMMENT-001** *(v0.1)*: The rendered view MUST allow the reviewer to initiate a new comment by selecting text in the rendered content. Selecting text and completing the selection (e.g., releasing the mouse button after a drag-select, or pressing a "comment on selection" keyboard shortcut after a keyboard selection) MUST surface a comment input affordance.
 
-- AC-1: Completing a non-collapsed text selection in the rendered content surfaces a comment input affordance within 200 ms. Acceptable affordances include: a floating "Comment on selection" button positioned near the selection; automatic focus on a sidebar/panel comment-input view; or activation of a registered command. The chosen affordance is design-defined and SHALL be documented in `design.md`.
+- AC-1: Completing a non-collapsed text selection in the rendered content surfaces a comment input affordance within 200 ms. Acceptable affordances include: a floating "Comment on selection" button positioned near the selection; automatic focus on a sidebar/panel comment-input view; or activation of a registered command. The chosen affordance is design-defined and SHALL be documented in [`design.md`](design.md).
 - AC-2: The comment input control SHALL include a multi-line text area, a "Post" button, and a "Cancel" affordance.
 - AC-3: The input control SHALL display, in a visually-distinct area, the file path and the resolved raw line range (REQ-COMMENT-002) of the selected text so the reviewer can verify what their comment will anchor to before posting.
 - AC-4: The reviewer SHALL be able to keyboard-trigger the comment affordance for the current selection without using the mouse (REQ-UX-003 backbone).
@@ -234,7 +234,7 @@ The extension targets the reviewer running it locally; comments it posts are rou
 
 **REQ-UX-003** *(v0.4)*: The extension SHOULD expose a default keybinding (configurable) for `adoMdReview.openPullRequest`.
 
-- AC-1: A default keybinding is registered in `package.json` (e.g., `ctrl+alt+r`) and can be overridden via standard VS Code keybindings UI.
+- AC-1: A default keybinding is registered in [`package.json`](../package.json) (e.g., `ctrl+alt+r`) and can be overridden via standard VS Code keybindings UI.
 
 #### Error handling and resilience
 
@@ -270,7 +270,7 @@ The extension targets the reviewer running it locally; comments it posts are rou
 - AC-1: The extension's `engines.vscode` declares a minimum VS Code version no older than `^1.85.0`.
 - AC-2: No native code dependencies are introduced; all runtime dependencies are pure JavaScript/TypeScript or VS Code APIs.
 
-**REQ-NFR-MAINT-001**: The extension MUST be implemented in TypeScript using the standard VS Code extension layout (`package.json` with `contributes`, `src/extension.ts` activate/deactivate, webpack or esbuild bundling).
+**REQ-NFR-MAINT-001**: The extension MUST be implemented in TypeScript using the standard VS Code extension layout ([`package.json`](../package.json) with `contributes`, [`src/extension.ts`](../src/extension.ts) activate/deactivate, webpack or esbuild bundling).
 
 - AC-1: Running `npm install && npm run compile` from a fresh clone produces a runnable extension.
 - AC-2: Source code passes `tsc --noEmit` with `strict: true`.

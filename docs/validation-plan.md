@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Last updated:** 2026-06-02
 **Authored by:** Systems Engineer persona (PromptKit pipeline stage `author-validation-plan`)
-**Inputs consumed:** `requirements.md` v0.3, `design.md` v0.2
+**Inputs consumed:** [`requirements.md`](requirements.md) v0.3, [`design.md`](design.md) v0.2
 **Status:** Draft — all test cases planned, none yet executed.
 
 ---
@@ -278,7 +278,7 @@ as **acceptable gaps**:
   `getSession` rejects).
 * **DEP-003 (ADO REST stability):** API drift is out of scope for
   pre-release validation; TC-160…162 establish a baseline.
-* **DEP-004 (Mermaid bundle):** pinned via `package.json` and verified at
+* **DEP-004 (Mermaid bundle):** pinned via [`package.json`](../package.json) and verified at
   build time; runtime change-detection is not in scope.
 * **DEP-005, DEP-006:** transitive — covered by `npm ls` static check
   (TC-147).

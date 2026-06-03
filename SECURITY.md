@@ -38,7 +38,8 @@ The extension handles two kinds of secrets:
   Windows, and libsecret on Linux.
 
 All HTTP responses, error logs, and exception messages are routed
-through a redaction layer (`src/redact.ts`) that strips bearer tokens,
+through a redaction layer ([`src/redact.ts`](src/redact.ts)) that
+strips bearer tokens,
 PATs, JWTs, and other sensitive substrings before they are written to
 the output channel.
 

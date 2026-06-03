@@ -1,15 +1,15 @@
 {
-    // Extensions recommended for working on this repository. VS Code
-    // prompts contributors to install them on first open. Keep the
-    // list minimal and tightly aligned with the toolchain actually in
-    // use (see package.json scripts + .vscode/tasks.json) so the
-    // prompt stays signal-rich.
-    "recommendations": [
-        // Surface esbuild errors from `npm: watch` / `npm: compile`
-        // (esbuild.js) in the Problems panel and on the status bar.
-        "connor4312.esbuild-problem-matchers",
-        // TypeScript loader problem matcher so `tsc --noEmit` output
-        // from the compile task is parsed into the Problems panel.
-        "amodio.tsl-problem-matcher"
-    ]
+  // Extensions recommended for working on this repository. VS Code
+  // prompts contributors to install them on first open. Keep the
+  // list minimal and tightly aligned with the toolchain actually in
+  // use (see package.json scripts + .vscode/tasks.json) so the
+  // prompt stays signal-rich.
+  "recommendations": [
+    // Surface esbuild errors from `npm: watch` / `npm: compile`
+    // (esbuild.js) in the Problems panel and on the status bar.
+    "connor4312.esbuild-problem-matchers",
+    // TypeScript loader problem matcher so `tsc --noEmit` output
+    // from the compile task is parsed into the Problems panel.
+    "amodio.tsl-problem-matcher"
+  ]
 }
