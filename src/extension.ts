@@ -14,6 +14,7 @@ import { SessionManager } from './session-manager';
 import { CommentInputViewProvider } from './comment-input-view-provider';
 import { RenderedViewEditorProvider } from './views/custom-editor-provider';
 import { FileTreeProvider } from './views/file-tree-provider';
+import { CommentThreadDecorationProvider } from './views/file-decoration-provider';
 import { registerCommands } from './command-registry';
 import { StatusBarController } from './status-bar';
 import { StalePRWatcher } from './stale-pr-watcher';
@@ -47,8 +48,13 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.registerWebviewViewProvider(CommentInputViewProvider.viewId, inputView)
     );
 
-    // Changed-files tree.
-    const treeProvider = new FileTreeProvider(sessionManager);
+    // Changed-files tree + trailing comment-count decoration.
+    const decorationProvider = new CommentThreadDecorationProvider();
+    context.subscriptions.push(
+        decorationProvider,
+        vscode.window.registerFileDecorationProvider(decorationProvider)
+    );
+    const treeProvider = new FileTreeProvider(sessionManager, decorationProvider);
     context.subscriptions.push(
         vscode.window.registerTreeDataProvider('markdownPrReview.fileTree', treeProvider)
     );

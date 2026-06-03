@@ -13,6 +13,7 @@ import * as vscode from 'vscode';
 import type { ChangedFile, Thread } from '../types';
 import { buildMdprUri } from '../mdpr-uri';
 import type { SessionManager } from '../session-manager';
+import type { CommentThreadDecorationProvider } from './file-decoration-provider';
 
 const NON_MARKDOWN_INFO_COMMAND = 'markdownPrReview.showNonMarkdownInfo';
 
@@ -23,7 +24,10 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
     private readonly infoCommand: vscode.Disposable;
 
-    constructor(private readonly sessionManager: SessionManager) {
+    constructor(
+        private readonly sessionManager: SessionManager,
+        private readonly decorationProvider: CommentThreadDecorationProvider
+    ) {
         sessionManager.onSessionChanged(() => this.refresh());
         sessionManager.onThreadsChanged(() => this.refresh());
         this.infoCommand = vscode.commands.registerCommand(
@@ -41,7 +45,26 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
     }
 
     refresh(): void {
+        this.updateDecorations();
         this._onDidChangeTreeData.fire();
+    }
+
+    private updateDecorations(): void {
+        const session = this.sessionManager.getActiveSession();
+        const next = new Map<string, { count: number; tooltip: string }>();
+        if (session) {
+            for (const f of session.files) {
+                if (!f.isMarkdown) continue;
+                const count = countUnresolvedThreads(session.threads, f.filePath);
+                if (count <= 0) continue;
+                const key = buildResourceUri(f.filePath).toString();
+                next.set(key, {
+                    count,
+                    tooltip: `${count} unresolved comment thread${count === 1 ? '' : 's'}`
+                });
+            }
+        }
+        this.decorationProvider.setDecorations(next);
     }
 
     getTreeItem(node: FileNode): vscode.TreeItem {
@@ -69,12 +92,11 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
         );
         const file = node.file;
         const threadCount = node.unresolvedThreads;
-        item.description = threadCount > 0 ? `${threadCount} 💬` : undefined;
         item.tooltip = `${file.filePath} (${file.changeType})`;
-        item.resourceUri = vscode.Uri.from({
-            scheme: 'file',
-            path: '/' + file.filePath.replace(/^\/+/, '')
-        });
+        if (threadCount > 0) {
+            item.tooltip += `\n${threadCount} unresolved comment thread${threadCount === 1 ? '' : 's'}`;
+        }
+        item.resourceUri = buildResourceUri(file.filePath);
         if (!file.isMarkdown) {
             item.iconPath = new vscode.ThemeIcon('circle-slash');
             item.tooltip += '\n(not a markdown file — click for info)';
@@ -85,7 +107,14 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
             };
             return item;
         }
-        item.iconPath = new vscode.ThemeIcon('markdown');
+        // Files with unresolved threads use the same comment-discussion
+        // codicon shown on each in-document thread marker; this keeps the
+        // visual language consistent between the tree and the rendered
+        // view. The unresolved count is rendered as a trailing badge by
+        // CommentThreadDecorationProvider.
+        item.iconPath = new vscode.ThemeIcon(
+            threadCount > 0 ? 'comment-discussion' : 'markdown'
+        );
         const session = this.sessionManager.getActiveSession();
         if (session) {
             const uri = buildMdprUri(
@@ -194,6 +223,17 @@ function parentDir(filePath: string): string {
 function basename(filePath: string): string {
     const idx = filePath.lastIndexOf('/');
     return idx < 0 ? filePath : filePath.slice(idx + 1);
+}
+
+// Build the resourceUri used both as the TreeItem's resourceUri and as
+// the key the FileDecorationProvider looks up. Uses the file:// scheme
+// with the PR-relative path; these synthetic URIs don't collide with any
+// real workspace files because the PR repo isn't checked out locally.
+function buildResourceUri(filePath: string): vscode.Uri {
+    return vscode.Uri.from({
+        scheme: 'file',
+        path: '/' + filePath.replace(/^\/+/, '')
+    });
 }
 
 export type FileNode =
