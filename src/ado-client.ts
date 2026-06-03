@@ -317,19 +317,24 @@ export class HttpAdoClient implements AdoClient {
             }
             this.log.info(`${method} ${url}`, redactAuthHeaders({ attempt, method, url }));
             let response: Response;
+            let bodyText: string;
             const controller = new AbortController();
             const timeoutHandle = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
             try {
-                try {
-                    response = await fetch(url, {
-                        method,
-                        headers,
-                        body: serializedBody,
-                        signal: controller.signal
-                    });
-                } finally {
-                    clearTimeout(timeoutHandle);
-                }
+                // The timeout covers BOTH header arrival (fetch) AND body
+                // streaming (response.text/safeReadText). microsoft/OS's
+                // /items endpoint will often return headers immediately and
+                // then stall mid-stream; clearing the timer at fetch resolve
+                // would leave us hanging on the body read.
+                response = await fetch(url, {
+                    method,
+                    headers,
+                    body: serializedBody,
+                    signal: controller.signal
+                });
+                bodyText = response.ok
+                    ? await response.text()
+                    : await safeReadText(response);
             } catch (err) {
                 const isTimeout = (err as { name?: string })?.name === 'AbortError';
                 const wrapped = isTimeout
@@ -351,12 +356,13 @@ export class HttpAdoClient implements AdoClient {
                 }
                 await sleep(backoffMs(attempt));
                 continue;
+            } finally {
+                clearTimeout(timeoutHandle);
             }
             if (response.ok) {
-                return await response.text();
+                return bodyText;
             }
-            const errorText = await safeReadText(response);
-            const safeBody = errorText.length > 1000 ? errorText.slice(0, 1000) + '...[truncated]' : errorText;
+            const safeBody = bodyText.length > 1000 ? bodyText.slice(0, 1000) + '...[truncated]' : bodyText;
             if (response.status === 401) {
                 (this.auth as VsCodeAuthManager).invalidateToken?.();
                 // TASK-035 / REQ-AUTH-002 AC-2: silent retry once. On the second
