@@ -506,3 +506,12 @@ rationale, and links back to the relevant requirement / open question.
   bundle.
 - **REQ/OQ**: ASM-008.
 
+
+---
+
+## D-030 (2026-06-02 23:30 PT) — Interactive sign-in fallback when no cached session
+
+- **Context**: First-run scenario hit `AuthAcquisitionError` with kind `silent` on the initial `resolveRepositoryId` request. `HttpAdoClient.requestText` was passing `silent: true` on the first `getToken` call (assuming a cached MSAL session existed), and the only fallback was the 401 retry path -- which never triggers when the failure happens before any HTTP request is made.
+- **Decision**: Wrap the first `getToken` call in `requestText` so that `AuthAcquisitionError` with `kind === 'silent'` and `auth401Retries === 0` re-invokes `getToken({ silent: false })`. Mirrors the 401 retry pattern in spirit (one upgrade from silent to interactive per request) without affecting the 401 retry budget.
+- **Rationale**: The existing 401 retry only kicks in when an HTTP 401 comes back; it cannot rescue `getToken` failures. Defaulting the first call to non-silent would force a sign-in dialog on every request that runs without a cached token, which conflicts with the explicit silent-first design (TASK-035). Catching the specific `AuthAcquisitionError('silent')` shape preserves silent-first while ensuring first-run users actually get a prompt instead of an error toast.
+- **REQ/OQ**: REQ-AUTH-001 AC-1, REQ-AUTH-002 AC-2.

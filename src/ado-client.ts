@@ -277,7 +277,26 @@ export class HttpAdoClient implements AdoClient {
         let auth401Retries = 0;     // TASK-035: cap at 1 interactive retry per request
         while (attempt < maxAttempts) {
             attempt++;
-            const token = await this.auth.getToken({ silent: auth401Retries === 0 });
+            let token: string;
+            try {
+                token = await this.auth.getToken({ silent: auth401Retries === 0 });
+            } catch (err) {
+                // First-run case: no cached MSAL session exists, so silent
+                // acquisition fails before any HTTP call has been made.
+                // Fall back to interactive auth once so the user actually
+                // gets a sign-in prompt. Subsequent retries reuse the now-
+                // cached session.
+                if (
+                    err instanceof AuthAcquisitionError &&
+                    err.kind === 'silent' &&
+                    auth401Retries === 0
+                ) {
+                    this.log.info('No cached session; prompting for interactive sign-in.', { url });
+                    token = await this.auth.getToken({ silent: false });
+                } else {
+                    throw err;
+                }
+            }
             const authHeader = VsCodeAuthManager.buildAuthHeader(
                 token,
                 (this.auth as VsCodeAuthManager).currentMode ?? 'msal'
