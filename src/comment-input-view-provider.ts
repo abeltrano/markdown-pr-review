@@ -104,17 +104,45 @@ export class CommentInputViewProvider implements vscode.WebviewViewProvider {
     <meta http-equiv="Content-Security-Policy" content="${csp}">
     <title>Comment Input</title>
     <style>
-        body { font-family: var(--vscode-font-family); margin: 0; padding: 8px; }
+        body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); margin: 0; padding: 8px; }
         #root { display: block; }
         .empty { opacity: 0.7; font-size: 0.9em; }
         .draft header { font-size: 0.85em; margin-bottom: 4px; }
         .lines { margin-left: 4px; opacity: 0.7; }
-        .mode { font-size: 0.75em; padding: 1px 4px; border-radius: 3px; margin-left: 4px; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
-        .mode-precise { background: var(--vscode-charts-green, #4caf50); color: white; }
-        textarea { width: 100%; box-sizing: border-box; font-family: var(--vscode-editor-font-family); }
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            font-family: var(--vscode-editor-font-family);
+            font-size: var(--vscode-editor-font-size);
+            color: var(--vscode-input-foreground);
+            background: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border, transparent);
+            padding: 4px 6px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+            outline-offset: -1px;
+            border-color: var(--vscode-focusBorder);
+        }
+        textarea::placeholder { color: var(--vscode-input-placeholderForeground); }
         footer { margin-top: 6px; display: flex; gap: 6px; }
-        button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 4px 10px; cursor: pointer; }
+        button {
+            font-family: inherit;
+            font-size: inherit;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: 1px solid var(--vscode-button-border, transparent);
+            padding: 4px 10px;
+            cursor: pointer;
+        }
         button:hover { background: var(--vscode-button-hoverBackground); }
+        button:focus { outline: 1px solid var(--vscode-focusBorder); outline-offset: 2px; }
+        button.secondary {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
+        button.secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
         .error { background: var(--vscode-inputValidation-errorBackground); color: var(--vscode-inputValidation-errorForeground); padding: 4px 6px; margin-bottom: 6px; }
     </style>
 </head>

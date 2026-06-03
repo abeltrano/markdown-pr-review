@@ -69,18 +69,16 @@ function renderActive(): void {
     }
     const a = state.active;
     const root = ensureRoot();
-    const modeLabel = a.mappingMode === 'precise' ? 'Precise anchor' : `Coarse anchor (${a.mappingMode})`;
     root.innerHTML = `
         <div class="draft">
             <header>
                 <strong>${escapeHtml(a.filePath)}</strong>
                 <span class="lines">Lines ${a.rightFileStart.line}-${a.rightFileEnd.line}</span>
-                <span class="mode mode-${a.mappingMode}">${escapeHtml(modeLabel)}</span>
             </header>
             <textarea id="body" rows="8" placeholder="Type your comment…"></textarea>
             <footer>
                 <button id="post">Post</button>
-                <button id="cancel">Cancel</button>
+                <button id="cancel" class="secondary">Cancel</button>
             </footer>
         </div>
     `;
