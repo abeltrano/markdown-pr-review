@@ -71,7 +71,10 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
         const threadCount = node.unresolvedThreads;
         item.description = threadCount > 0 ? `${threadCount} 💬` : undefined;
         item.tooltip = `${file.filePath} (${file.changeType})`;
-        item.resourceUri = vscode.Uri.parse(`file:///${file.filePath}`);
+        item.resourceUri = vscode.Uri.from({
+            scheme: 'file',
+            path: '/' + file.filePath.replace(/^\/+/, '')
+        });
         if (!file.isMarkdown) {
             item.iconPath = new vscode.ThemeIcon('circle-slash');
             item.tooltip += '\n(not a markdown file — click for info)';
