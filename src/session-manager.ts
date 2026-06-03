@@ -13,6 +13,7 @@ import { CommentController } from './comment-controller';
 import type { CommentInputViewProvider } from './comment-input-view-provider';
 import { getLogger } from './logger';
 import { render as renderMarkdown } from './renderer';
+import { annotateBlockDiff } from './renderer/diff-annotator';
 import { parseAdoprUri } from './adopr-uri';
 import { buildRenderedViewCsp, generateNonce } from './views/csp';
 import type { AuthManager } from './auth-manager';
@@ -136,7 +137,8 @@ export class SessionManager {
     private async buildInitPayload(filePath: string): Promise<RenderedViewInitPayload> {
         const session = this.requireSession();
         const markdown = await this.getFileContent(filePath);
-        const result = renderMarkdown({ markdown });
+        const diffAnnotations = await this.computeDiffAnnotations(filePath, markdown);
+        const result = renderMarkdown({ markdown, diffAnnotations });
         return {
             sessionId: session.id,
             filePath,
@@ -150,9 +152,30 @@ export class SessionManager {
             baseSha: session.baseSha,
             fileContent: { html: result.html, sourceMap: result.sourceMap },
             threads: session.threads.filter(t => t.threadContext?.filePath === filePath),
-            diffAnnotations: [],
+            diffAnnotations,
             protocolVersion: 1
         };
+    }
+
+    private async computeDiffAnnotations(filePath: string, headMarkdown: string) {
+        const session = this.requireSession();
+        if (!session.baseSha) {
+            return [];
+        }
+        try {
+            const baseMarkdown = await this.adoClient.getFileContentOrNullByRef(
+                session.pr.ref,
+                session.baseSha,
+                filePath
+            );
+            return annotateBlockDiff(headMarkdown, baseMarkdown);
+        } catch (err) {
+            this.log.warn('Failed to compute diff annotations', {
+                filePath,
+                error: (err as Error).message
+            });
+            return [];
+        }
     }
 
     private async handleRenderedViewMessage(uriStr: string, msg: RenderedViewToHost): Promise<void> {
@@ -305,6 +328,48 @@ function renderedViewHtml(opts: { csp: string; nonce: string; scriptUri: string 
         }
         .ado-thread-popover__body {
             white-space: pre-wrap; word-wrap: break-word;
+        }
+        /* Diff gutter bars (TASK-031 / REQ-DIFF-001). */
+        article#content [data-source-line-start] { position: relative; }
+        article#content [data-diff-state="added"] {
+            border-left: 3px solid var(--vscode-diffEditor-insertedTextBackground, #2cbe4e);
+            padding-left: 8px;
+            margin-left: -11px;
+        }
+        article#content [data-diff-state="modified"] {
+            border-left: 3px solid var(--vscode-editorInfo-foreground, #3794ff);
+            padding-left: 8px;
+            margin-left: -11px;
+        }
+        article#content [data-diff-state="context-of-deletion"] {
+            border-left: 3px dashed var(--vscode-diffEditor-removedTextBackground, #cb2431);
+            padding-left: 8px;
+            margin-left: -11px;
+            cursor: help;
+        }
+        article#content [data-diff-state="context-of-deletion"]::before {
+            content: "↑ deleted content (hover to view)";
+            display: block;
+            font-size: 0.75em;
+            opacity: 0.7;
+            font-style: italic;
+            margin-bottom: 4px;
+        }
+        article#content [data-diff-state="context-of-deletion"][data-diff-deleted]:hover::after {
+            content: attr(data-diff-deleted);
+            position: absolute;
+            left: 12px;
+            top: 100%;
+            white-space: pre-wrap;
+            background: var(--vscode-editorHoverWidget-background);
+            color: var(--vscode-editorHoverWidget-foreground);
+            border: 1px solid var(--vscode-editorHoverWidget-border);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            max-width: 480px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 90;
         }
         .banner { padding: 6px 12px; }
         .banner.warn { background: var(--vscode-inputValidation-warningBackground); }

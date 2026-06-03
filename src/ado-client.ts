@@ -45,6 +45,14 @@ export interface AdoClient {
     getPullRequest(ref: PullRequestRef): Promise<PullRequest>;
     getChangedFiles(ref: PullRequestRef, sha: string): Promise<ChangedFile[]>;
     getFileContent(repoId: string, sha: string, path: string): Promise<string>;
+    /** Variant that takes a full PR ref (preferred). */
+    getFileContentByRef(ref: PullRequestRef, sha: string, path: string): Promise<string>;
+    /** Returns null on 404 (file absent at the given sha) instead of throwing. */
+    getFileContentOrNullByRef(
+        ref: PullRequestRef,
+        sha: string,
+        path: string
+    ): Promise<string | null>;
     getThreads(ref: PullRequestRef): Promise<Thread[]>;
     createThread(ref: PullRequestRef, input: CreateThreadInput): Promise<Thread>;
     getMergeBaseSha(ref: PullRequestRef): Promise<string>;
@@ -384,6 +392,26 @@ export class HttpAdoClient implements AdoClient {
             }
         );
         return await this.requestText('GET', url);
+    }
+
+    /**
+     * Same as getFileContentByRef but returns null when the server replies
+     * 404 (file absent at this sha — common for the merge-base of an
+     * added file, per REQ-DIFF-002 AC-2).
+     */
+    async getFileContentOrNullByRef(
+        ref: PullRequestRef,
+        sha: string,
+        path: string
+    ): Promise<string | null> {
+        try {
+            return await this.getFileContentByRef(ref, sha, path);
+        } catch (err) {
+            if (err instanceof AdoRestError && err.status === 404) {
+                return null;
+            }
+            throw err;
+        }
     }
 }
 

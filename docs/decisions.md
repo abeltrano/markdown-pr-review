@@ -339,3 +339,58 @@ rationale, and links back to the relevant requirement / open question.
   state where it belongs. Cost: one extra GET per "first-time"
   endpoint hit per session — acceptable for a personal-use tool.
 - **REQ/OQ**: design.md §4.1.1; REQ-PR-001.
+
+---
+
+## D-021 (2026-06-03 00:30 PT) — Diff fingerprint normalization rules
+
+- **Context**: TASK-030 Diff Annotator. Need a normalization that is
+  tolerant enough not to flag trivial reformatting as a change, yet
+  strict enough to detect real content changes.
+- **Decision**: Normalize block fingerprints by lowercasing then
+  collapsing all whitespace runs to a single space and trimming. The
+  fingerprint is computed over the concatenation of the block's
+  `token.type` prefix and its rendered text content (children
+  `content` fields joined with a space).
+- **Rationale**: Lowercasing avoids flagging case-only changes
+  (e.g., capitalizing a heading) as modifications; whitespace
+  collapsing handles trailing-space and indentation drift. Prefixing
+  with the token type ensures that, say, a heading and a paragraph
+  with identical text never compare as equal — they are semantically
+  different blocks.
+- **REQ/OQ**: REQ-DIFF-001 AC-4.
+
+---
+
+## D-022 (2026-06-03 00:35 PT) — Context-of-deletion anchoring
+
+- **Context**: TASK-030. The renderer cannot draw a gutter bar where
+  no head-block exists (deleted content was removed entirely). We
+  must anchor the context-of-deletion marker to something visible.
+- **Decision**: Attach pending deletions to the next head block in
+  document order. When the deletion is at the file tail (no following
+  head block), fall back to the immediately preceding head block.
+  The deleted content is carried in the `deletedContent` field and
+  surfaced as a hover tooltip via CSS `::after`.
+- **Rationale**: Reviewers reading the head version in document
+  order will see the marker exactly where the deletion fits in the
+  flow. Falling back to the previous block ensures tail-end
+  deletions are still surfaced rather than silently swallowed.
+- **REQ/OQ**: REQ-DIFF-001 AC-3.
+
+---
+
+## D-023 (2026-06-03 00:40 PT) — getFileContentOrNullByRef for added files
+
+- **Context**: TASK-029. REQ-DIFF-002 AC-2 says that when a file
+  does not exist at the merge-base (added in the PR), the diff
+  annotator should treat every block as `added`.
+- **Decision**: Add `HttpAdoClient.getFileContentOrNullByRef` that
+  catches `AdoRestError` with status 404 and returns `null`
+  instead of throwing. All other errors propagate. The diff
+  annotator receives `null` and short-circuits to all-added.
+- **Rationale**: Keeps the diff-computation path entirely declarative
+  ("base content is either text or null"); error handling stays in
+  the REST layer where it belongs.
+- **REQ/OQ**: REQ-DIFF-002 AC-2.
+
