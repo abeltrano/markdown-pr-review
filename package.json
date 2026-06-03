@@ -2,7 +2,7 @@
   "name": "markdown-pr-review",
   "displayName": "Markdown PR Review",
   "description": "Review Azure DevOps PR markdown files in a rendered view and post comments anchored to raw line ranges.",
-  "version": "0.4.13",
+  "version": "0.4.14",
   "publisher": "anbeltra",
   "private": true,
   "license": "MIT",

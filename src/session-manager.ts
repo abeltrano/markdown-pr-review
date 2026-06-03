@@ -170,7 +170,8 @@ export class SessionManager {
             scriptUri: scriptUri.toString(),
             codiconCssUri: panel.webview.asWebviewUri(
                 vscode.Uri.joinPath(this.context.extensionUri, 'out', 'codicons', 'codicon.css')
-            ).toString()
+            ).toString(),
+            previewStyle: readMarkdownPreviewStyle()
         });
 
         // Kick off head + base fetches in parallel so the base fetch can
@@ -424,7 +425,13 @@ export class SessionManager {
     }
 }
 
-function renderedViewHtml(opts: { csp: string; nonce: string; scriptUri: string; codiconCssUri: string }): string {
+function renderedViewHtml(opts: {
+    csp: string;
+    nonce: string;
+    scriptUri: string;
+    codiconCssUri: string;
+    previewStyle: { fontFamily: string; fontSize: number; lineHeight: number };
+}): string {
     return /* html */ `<!doctype html>
 <html lang="en">
 <head>
@@ -433,10 +440,26 @@ function renderedViewHtml(opts: { csp: string; nonce: string; scriptUri: string;
     <link rel="stylesheet" href="${opts.codiconCssUri}">
     <title>Markdown PR Review</title>
     <style>
-        body { font-family: var(--vscode-editor-font-family); margin: 0; padding: 0; }
+        /* Match the built-in markdown preview's font defaults so prose
+           in our rendered view looks the same as Ctrl+Shift+V. Code
+           blocks keep the editor monospace font (overridden below). */
+        :root {
+            --markdown-font-family: ${escapeCssString(opts.previewStyle.fontFamily)};
+            --markdown-font-size: ${opts.previewStyle.fontSize}px;
+            --markdown-line-height: ${opts.previewStyle.lineHeight};
+        }
+        body {
+            font-family: var(--markdown-font-family);
+            font-size: var(--markdown-font-size);
+            line-height: var(--markdown-line-height);
+            margin: 0;
+            padding: 0;
+        }
         #pr-banner { padding: 6px 12px; background: var(--vscode-editorWidget-background); border-bottom: 1px solid var(--vscode-editorWidget-border); font-size: 0.85em; }
         #content-wrapper { position: relative; padding: 16px 24px; max-width: 900px; margin: 0 auto; }
-        article#content { line-height: 1.5; color: var(--vscode-editor-foreground); }
+        article#content { color: var(--vscode-editor-foreground); }
+        article#content pre,
+        article#content code { font-family: var(--vscode-editor-font-family, monospace); }
         article#content pre { background: var(--vscode-textCodeBlock-background); padding: 8px; overflow-x: auto; }
         article#content code { background: var(--vscode-textCodeBlock-background); padding: 1px 4px; }
         article#content table { border-collapse: collapse; margin: 8px 0; }
@@ -549,4 +572,43 @@ function renderedViewHtml(opts: { csp: string; nonce: string; scriptUri: string;
     <script nonce="${opts.nonce}" src="${opts.scriptUri}"></script>
 </body>
 </html>`;
+}
+
+// VS Code's markdown preview defaults (matches
+// extensions/markdown-language-features's preview.css).
+const PREVIEW_DEFAULT_FONT_FAMILY =
+    '-apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif';
+const PREVIEW_DEFAULT_FONT_SIZE = 14;
+const PREVIEW_DEFAULT_LINE_HEIGHT = 1.6;
+
+// Read the user's markdown.preview.* settings so our rendered view
+// inherits any customizations they've already made for Ctrl+Shift+V.
+// Falls back to the same defaults VS Code's built-in preview uses.
+function readMarkdownPreviewStyle(): { fontFamily: string; fontSize: number; lineHeight: number } {
+    const cfg = vscode.workspace.getConfiguration('markdown.preview');
+    const rawFamily = cfg.get<string>('fontFamily');
+    const rawSize = cfg.get<number>('fontSize');
+    const rawLine = cfg.get<number>('lineHeight');
+    return {
+        fontFamily: typeof rawFamily === 'string' && rawFamily.trim().length > 0
+            ? rawFamily
+            : PREVIEW_DEFAULT_FONT_FAMILY,
+        fontSize: typeof rawSize === 'number' && Number.isFinite(rawSize) && rawSize > 0
+            ? rawSize
+            : PREVIEW_DEFAULT_FONT_SIZE,
+        lineHeight: typeof rawLine === 'number' && Number.isFinite(rawLine) && rawLine > 0
+            ? rawLine
+            : PREVIEW_DEFAULT_LINE_HEIGHT
+    };
+}
+
+// Escape a string for safe inclusion inside a CSS value. The font-family
+// stack can contain quoted family names (e.g. "Segoe UI") which must
+// remain intact, but stray </style> or backslashes must not be allowed
+// to break out of the <style> block.
+function escapeCssString(value: string): string {
+    return value
+        .replace(/\\/g, '\\\\')
+        .replace(/<\//g, '<\\/')
+        .replace(/[\r\n]/g, ' ');
 }
