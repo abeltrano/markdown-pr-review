@@ -10,7 +10,7 @@
 //     inclusive form: data-source-line-start = start + 1,
 //     data-source-line-end = end (inclusive).
 
-import MarkdownIt from 'markdown-it';
+import type MarkdownIt from 'markdown-it';
 import type Token from 'markdown-it/lib/token.mjs';
 
 const BLOCK_TOKEN_OPENERS = new Set([

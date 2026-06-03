@@ -1,0 +1,43 @@
+# Lint + type-check + test on every push to main and every PR.
+# Runs on Node 20 to match package.json engines.node and the local dev env.
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+
+# Cancel previous in-progress runs for the same ref when a new commit lands.
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    build:
+        name: lint + build + test
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js 20
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            - name: Install dependencies (npm ci)
+              run: npm ci
+
+            - name: Lint (eslint)
+              run: npm run lint
+
+            - name: Build (tsc --noEmit + esbuild --production)
+              run: npm run build
+
+            - name: Test (mocha)
+              run: npm test

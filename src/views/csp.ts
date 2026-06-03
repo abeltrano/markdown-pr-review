@@ -3,17 +3,19 @@
 // Per-panel nonces; rendered-view permits 'unsafe-inline' for style
 // (mermaid requirement, ASM-009); comment-input does not.
 
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
+import { webcrypto as nodeWebcrypto } from 'node:crypto';
 
 /**
  * Generate 32 chars of base62 entropy. Sufficient for per-panel nonces.
  * Uses Node's crypto.getRandomValues, which is available in the extension
- * host (Node 20+ via globalThis.crypto).
+ * host (Node 20+ via globalThis.crypto). The node:crypto import is a
+ * safety fallback for hosts where globalThis.crypto is not yet wired.
  */
 export function generateNonce(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const bytes = new Uint8Array(32);
-    (globalThis.crypto ?? require('node:crypto').webcrypto).getRandomValues(bytes);
+    (globalThis.crypto ?? nodeWebcrypto).getRandomValues(bytes);
     let out = '';
     for (const b of bytes) {
         out += chars[b % chars.length];

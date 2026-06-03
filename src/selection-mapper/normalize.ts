@@ -43,7 +43,7 @@ export function normalizeBlock(lines: string[], startLine: number): NormalizedSp
         col = leadingStrip.consumed + 1;
         const remaining = line.slice(i);
         // Skip table separator rows entirely (e.g. |---|---|).
-        if (/^[\s|:\-]+$/.test(remaining) && remaining.includes('|')) {
+        if (/^[\s|:-]+$/.test(remaining) && remaining.includes('|')) {
             continue;
         }
         // Skip fence delimiters (``` or ~~~).

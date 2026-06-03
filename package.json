@@ -153,11 +153,12 @@
     "compile": "tsc --noEmit && node esbuild.js",
     "watch": "node esbuild.js --watch",
     "build": "tsc --noEmit && node esbuild.js --production",
+    "lint": "eslint .",
     "package": "npm run build && vsce package --no-yarn",
-    "test": "mocha",
-    "lint": "tsc --noEmit"
+    "test": "mocha"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "@types/chai": "^4.3.20",
     "@types/diff": "^7.0.2",
     "@types/markdown-it": "^14.1.2",
@@ -168,11 +169,13 @@
     "@vscode/vsce": "^2.32.0",
     "chai": "^4.5.0",
     "esbuild": "^0.23.0",
+    "eslint": "^9.0.0",
     "mocha": "^11.7.6",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.22.4",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0"
   },
   "dependencies": {
     "diff": "^5.2.0",

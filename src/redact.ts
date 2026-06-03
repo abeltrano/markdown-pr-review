@@ -7,7 +7,7 @@
 // base64url segments, the first beginning with "eyJ" (the base64url prefix
 // of `{"`).
 export const JWT_LIKE_REGEX =
-    /eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/g;
+    /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
 
 // Header names recognized as auth carriers.
 export const AUTH_HEADER_NAMES = new Set<string>([
