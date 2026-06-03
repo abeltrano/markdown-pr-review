@@ -31,3 +31,8 @@ markdown files via the `applyTo` glob above.
 - **Bold** = `**double**`, *italic* = `*single*`. No spaces inside
   the markers. Don't use emphasis as a substitute for a heading.
 - Wrap bare URLs in angle brackets (`<https://example.com>`).
+- **Make internal file references markdown links** the first time
+  they appear in a sentence: `` [`src/redact.ts`](../src/redact.ts) ``
+  (path relative to the containing file). Pure-text references —
+  file categories (`.cjs` files), config keys (`package.json#main`),
+  or generated artifacts (`out/extension.js`) — stay as inline code.

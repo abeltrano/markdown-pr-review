@@ -129,7 +129,8 @@ the webview bundle small.
 
 ## Known limitations (v0.4)
 
-These are documented in `docs/requirements.md` §2.2 as out of scope:
+These are documented in [`docs/requirements.md`](docs/requirements.md)
+§2.2 as out of scope:
 
 - **Multi-PR**: only one PR session is active at a time. Opening a new
   PR closes the previous session.

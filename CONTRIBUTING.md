@@ -101,7 +101,7 @@ At a glance:
 - Never write `void someAsync()` without a leading comment
   explaining why the rejection is genuinely safe to ignore.
 - Never log secret-bearing strings directly — route through
-  `redact()` in `src/redact.ts`.
+  `redact()` in [`src/redact.ts`](src/redact.ts).
 
 ## Tests
 
@@ -114,7 +114,7 @@ Add a test whenever you:
 - Fix a bug (write the failing test first when practical).
 - Add a new public function or webview message type.
 - Change behavior in `renderer/`, `selection-mapper/`, or
-  `ado-client.ts`.
+  [`ado-client.ts`](src/ado-client.ts).
 
 Run a single file:
 
@@ -122,7 +122,8 @@ Run a single file:
 npx mocha test/unit/renderer/renderer.test.ts
 ```
 
-(The `--import=tsx` loader is wired in `.mocharc.cjs`, so no extra
+(The `--import=tsx` loader is wired in
+[`.mocharc.cjs`](.mocharc.cjs), so no extra
 flags are needed.)
 
 ## Commits
@@ -151,7 +152,8 @@ ui(rendered): use codicon-comment-discussion for thread markers
 1. Branch from `main`.
 2. Make sure `npm run lint && npm run build && npm test` all pass
    locally before opening the PR.
-3. Update **`CHANGELOG.md`** under the `## [Unreleased]` heading.
+3. Update [**`CHANGELOG.md`**](CHANGELOG.md) under the
+   `## [Unreleased]` heading.
 4. Fill in the PR template; include a screenshot or short GIF for any
    user-visible change.
 5. CI must be green before review.

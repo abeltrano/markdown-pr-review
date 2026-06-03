@@ -35,7 +35,8 @@ npm test           # mocha (tsx loader) against test/unit/**/*.test.ts
 npm run package    # build + vsce package — produces a .vsix (gitignored)
 ```
 
-Run one test file (`.mocharc.cjs` wires the `tsx` loader, so no extra
+Run one test file ([`.mocharc.cjs`](../.mocharc.cjs) wires the `tsx`
+loader, so no extra
 flags are needed):
 
 ```powershell
@@ -51,13 +52,13 @@ Code auth sessions, so ADO sign-in flows work end-to-end.
 
 ## Build pipeline
 
-`esbuild.js` produces **three** bundles in `out/`:
+[`esbuild.js`](../esbuild.js) produces **three** bundles in `out/`:
 
 | Bundle | Entry | Format | Notes |
 | --- | --- | --- | --- |
-| Extension host | `src/extension.ts` | CJS, `platform: 'node'`, `external: ['vscode']` | The only thing wired in `package.json#main` |
-| Rendered-view webview | `src/views/rendered-view/main.ts` | Browser IIFE | Bundles markdown-it + mermaid |
-| Comment-input webview | `src/views/comment-input/main.ts` | Browser IIFE | Lightweight |
+| Extension host | [`src/extension.ts`](../src/extension.ts) | CJS, `platform: 'node'`, `external: ['vscode']` | The only thing wired in [`package.json`](../package.json) `main` |
+| Rendered-view webview | [`src/views/rendered-view/main.ts`](../src/views/rendered-view/main.ts) | Browser IIFE | Bundles markdown-it + mermaid |
+| Comment-input webview | [`src/views/comment-input/main.ts`](../src/views/comment-input/main.ts) | Browser IIFE | Lightweight |
 
 The build also copies `@vscode/codicons/dist/codicon.{css,ttf}` into
 `out/codicons/` so the rendered-view webview can `<link>` them (its
@@ -68,16 +69,68 @@ type-check. All runtime code comes from esbuild.
 
 ## Architecture
 
+The diagram below shows how the major components fit together. The
+prose under each subsection explains the design choices and the
+contracts in play.
+
+```mermaid
+flowchart TB
+  subgraph Host["VS Code extension host"]
+    direction TB
+    Cmd["Command registry<br/>command-registry.ts"]
+    Session["<b>Session</b><br/>session-manager.ts<br/><i>(orchestrator)</i>"]
+    Editor["RenderedViewEditorProvider<br/>views/custom-editor-provider.ts"]
+    Tree["FileTreeProvider<br/>views/file-tree-provider.ts"]
+    InputProv["CommentInputViewProvider<br/>comment-input-view-provider.ts"]
+    Renderer["Renderer pipeline<br/>renderer/ (markdown-it + diff)"]
+    SelMap["Selection mapper<br/>selection-mapper/"]
+    AdoClient["AdoClient<br/>ado-client.ts"]
+    Auth["AuthManager<br/>auth-manager.ts"]
+    Logger["Logger + redact<br/>logger.ts / redact.ts"]
+    Watcher["StalePRWatcher<br/>stale-pr-watcher.ts"]
+  end
+
+  subgraph Webviews["Webviews (sandboxed)"]
+    direction TB
+    RView["Rendered view<br/>views/rendered-view/main.ts"]
+    CView["Comment input<br/>views/comment-input/main.ts"]
+  end
+
+  ADO[("Azure DevOps REST<br/>dev.azure.com")]
+  AuthProvider[("vscode.authentication<br/>(Microsoft / Entra)")]
+  SecretStore[("SecretStorage<br/>(PAT fallback)")]
+
+  Cmd --> Session
+  Session --> Editor
+  Session --> Tree
+  Session --> InputProv
+  Session --> Renderer
+  Session --> AdoClient
+  Session --> Watcher
+  Session --> Logger
+  Renderer --> SelMap
+  AdoClient --> Auth
+  AdoClient --> Logger
+  AdoClient <--> ADO
+  Auth <--> AuthProvider
+  Auth <--> SecretStore
+
+  Editor <-. "postMessage<br/>ready / init / render / select" .-> RView
+  InputProv <-. "postMessage<br/>submit / cancel" .-> CView
+```
+
 The host runs a single active **`Session`** at a time
-(`src/session-manager.ts`, ~34 KB — the orchestrator). A Session owns
-the PR, the changed-files list, the per-file raw-content cache, the
-thread cache, the at-most-one in-flight draft, and the live
-`WebviewPanel` references for every opened `mdpr://` editor.
+([`src/session-manager.ts`](../src/session-manager.ts), ~34 KB — the
+orchestrator). A Session owns the PR, the changed-files list, the
+per-file raw-content cache, the thread cache, the at-most-one
+in-flight draft, and the live `WebviewPanel` references for every
+opened `mdpr://` editor.
 
 Files are opened through a **synthetic URI scheme** — `mdpr://` —
-built by `src/mdpr-uri.ts`. There is no file on disk. VS Code routes
-those URIs to `RenderedViewEditorProvider`, which materializes the
-rendered HTML and wires up the postMessage channel.
+built by [`src/mdpr-uri.ts`](../src/mdpr-uri.ts). There is no file
+on disk. VS Code routes those URIs to `RenderedViewEditorProvider`,
+which materializes the rendered HTML and wires up the postMessage
+channel.
 
 ```
 mdpr://{org}/{project}/{repoId}/{prId}/{filePath}
@@ -88,7 +141,8 @@ call resolves repo-name → GUID; `buildMdprUri` throws if it's empty.
 
 ### postMessage protocol
 
-Fully typed in `src/types.ts` (`HostToRenderedView`,
+Fully typed in [`src/types.ts`](../src/types.ts)
+(`HostToRenderedView`,
 `RenderedViewToHost`, `HostToInputView`, `InputViewToHost`). When you
 add a new message variant, add it to the union there first — both
 sides import it.
@@ -121,14 +175,15 @@ build a `LineOffset`.
 
 ### Diff annotator
 
-`src/renderer/diff-annotator.ts` diffs head vs base content per
+[`src/renderer/diff-annotator.ts`](../src/renderer/diff-annotator.ts)
+diffs head vs base content per
 markdown block and emits `DiffAnnotation[]` with states `unchanged`,
 `added`, `modified`, `context-of-deletion`. The webview renders these
 as gutter bars; the deleted-content text is shown on hover only.
 
 ### Auth
 
-`src/auth-manager.ts` prefers
+[`src/auth-manager.ts`](../src/auth-manager.ts) prefers
 `vscode.authentication.getSession('microsoft', ['499b84ac-1321-427f-aa17-267ca6975798/.default'])`
 (the ADO resource scope). When the Microsoft provider is unavailable
 or rejects, it falls back to a Personal Access Token stored in VS
@@ -138,16 +193,19 @@ once on `401` with a freshly acquired token before surfacing
 
 ### Logging and secrets
 
-Use `getLogger('ComponentName')` from `src/logger.ts` — **never**
+Use `getLogger('ComponentName')` from
+[`src/logger.ts`](../src/logger.ts) — **never**
 `console.log`. Anything that may carry tokens, PATs, JWTs, or
 ADO-response bodies must be routed through `redact(...)` in
-`src/redact.ts` before reaching the output channel. The output
+[`src/redact.ts`](../src/redact.ts) before reaching the output
+channel. The output
 channel is opened with the `log` languageId so VS Code's log-grammar
 colorizer applies.
 
 ### Content Security Policy
 
-`src/views/csp.ts` builds a strict per-load CSP with a unique nonce.
+[`src/views/csp.ts`](../src/views/csp.ts) builds a strict per-load
+CSP with a unique nonce.
 `style-src` and `font-src` include `https:` so user-configured
 `markdown.styles` URLs and web fonts load — don't remove that without
 a migration plan for the live-restyle feature.
@@ -166,21 +224,24 @@ a migration plan for the live-restyle feature.
 
 ## Where to find what
 
-- `src/session-manager.ts` — orchestrator; per-panel ready-signal
-  map; live-restyle on `markdown.styles` / `markdown.preview` config
-  change.
-- `src/ado-client.ts` — REST client; PR/threads/items endpoints; 401
-  retry; error classification.
-- `src/views/rendered-view/main.ts` — webview entry; receives `init`,
-  paints HTML, hosts selection handler + popovers + mermaid loader.
-- `src/types.ts` — single source of truth for cross-boundary types.
-- `docs/design.md` — architecture (§3) and contracts (§4); the
-  decisions log at §5 records the "rendered-view in custom editor",
-  "sidebar comment input", and "block + text selection" tradeoffs.
-- `docs/requirements.md` — REQ-XXX definitions and explicit
-  out-of-scope list (§2.2).
-- `docs/validation-plan.md` — TC-001…TC-165; reference these when
-  adding tests for new behavior.
+- [`src/session-manager.ts`](../src/session-manager.ts) — orchestrator;
+  per-panel ready-signal map; live-restyle on `markdown.styles` /
+  `markdown.preview` config change.
+- [`src/ado-client.ts`](../src/ado-client.ts) — REST client;
+  PR/threads/items endpoints; 401 retry; error classification.
+- [`src/views/rendered-view/main.ts`](../src/views/rendered-view/main.ts) —
+  webview entry; receives `init`, paints HTML, hosts selection
+  handler + popovers + mermaid loader.
+- [`src/types.ts`](../src/types.ts) — single source of truth for
+  cross-boundary types.
+- [`docs/design.md`](design.md) — architecture (§3) and contracts
+  (§4); the decisions log at §5 records the "rendered-view in custom
+  editor", "sidebar comment input", and "block + text selection"
+  tradeoffs.
+- [`docs/requirements.md`](requirements.md) — REQ-XXX definitions and
+  explicit out-of-scope list (§2.2).
+- [`docs/validation-plan.md`](validation-plan.md) — TC-001…TC-165;
+  reference these when adding tests for new behavior.
 
 ## Things that have bitten this codebase
 
@@ -201,13 +262,15 @@ See [`docs/coding-style.md`](coding-style.md) for the full
 per-language style guide. The high-level rules:
 
 - **2-space indent**, **LF** line endings (enforced by EditorConfig).
-- **ESLint flat config** (`eslint.config.mjs`) is the style source of
-  truth. CI fails on any warning. `npm run lint -- --fix` for
+- **ESLint flat config**
+  ([`eslint.config.mjs`](../eslint.config.mjs)) is the style source
+  of truth. CI fails on any warning. `npm run lint -- --fix` for
   auto-fixes.
 - Prefer **named exports**; default exports are not used anywhere.
 - `import type { ... }` for type-only imports (rule:
   `consistent-type-imports`). `typeof import('...')` is permitted
-  for dynamic-import typing (see `mermaid-loader.ts`).
+  for dynamic-import typing (see
+  [`src/views/rendered-view/mermaid-loader.ts`](../src/views/rendered-view/mermaid-loader.ts)).
 - **`_` prefix** marks intentionally-unused vars/params (e.g.
   `_token: vscode.CancellationToken`).
 - `eqeqeq` enforced, but `== null` is allowed for the
@@ -215,7 +278,8 @@ per-language style guide. The high-level rules:
 - **Conventional Commits** with one project-local addition: `ui:`
   for visual-only changes that aren't fixes or features.
 - Doc citations use stable IDs: `REQ-XXX`
-  (`docs/requirements.md`), `RISK-XXX`, `TC-XXX`
-  (`docs/validation-plan.md`), `ASM-XXX`. The historical `D-XXX`
-  (decisions.md) and `TASK-XXX` (implementation-plan.md) IDs were
-  retired in commit `e02d5b3` — don't reintroduce them.
+  ([`docs/requirements.md`](requirements.md)), `RISK-XXX`, `TC-XXX`
+  ([`docs/validation-plan.md`](validation-plan.md)), `ASM-XXX`. The
+  historical `D-XXX` (decisions.md) and `TASK-XXX`
+  (implementation-plan.md) IDs were retired in commit `e02d5b3` —
+  don't reintroduce them.

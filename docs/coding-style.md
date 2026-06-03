@@ -64,31 +64,33 @@ can see at a glance which files a rule covers.
   `_token: vscode.CancellationToken`).
 - Never `void someAsync()` without a leading comment explaining why
   the rejection is genuinely safe to ignore.
-- Use `getLogger('Component')` from `src/logger.ts` — never
-  `console.log`. `console.warn`/`console.error` are allowed as a
-  last resort.
+- Use `getLogger('Component')` from
+  [`src/logger.ts`](../src/logger.ts) — never `console.log`.
+  `console.warn`/`console.error` are allowed as a last resort.
 - Anything that may carry a token, PAT, JWT, or ADO response body
-  must pass through `redact(...)` from `src/redact.ts` before
-  logging.
+  must pass through `redact(...)` from
+  [`src/redact.ts`](../src/redact.ts) before logging.
 
 ### Comments
 
 - Comment **why**, not what. Explain non-obvious tradeoffs and
   gotchas.
-- Cite `REQ-XXX` (`docs/requirements.md`), `RISK-XXX`,
-  `TC-XXX` (`docs/validation-plan.md`), or `ASM-XXX` when behavior
-  derives from a spec. Do not invent new IDs and do not reintroduce
-  the retired `D-XXX` or `TASK-XXX` IDs.
+- Cite `REQ-XXX` ([`docs/requirements.md`](requirements.md)),
+  `RISK-XXX`, `TC-XXX`
+  ([`docs/validation-plan.md`](validation-plan.md)), or `ASM-XXX`
+  when behavior derives from a spec. Do not invent new IDs and do
+  not reintroduce the retired `D-XXX` or `TASK-XXX` IDs.
 
 ## JavaScript
 
 *Applies to: `**/*.js`, `**/*.mjs`, `**/*.cjs`, `**/*.jsx`.*
 
 Hand-written `.js` / `.cjs` / `.mjs` files in this repo are limited
-to build and test configuration (`esbuild.js`, `.mocharc.cjs`,
-`eslint.config.mjs`). Runtime code lives in TypeScript and is
-bundled to `out/` by esbuild — do not hand-edit anything under
-`out/`.
+to build and test configuration ([`esbuild.js`](../esbuild.js),
+[`.mocharc.cjs`](../.mocharc.cjs),
+[`eslint.config.mjs`](../eslint.config.mjs)). Runtime code lives in
+TypeScript and is bundled to `out/` by esbuild — do not hand-edit
+anything under `out/`.
 
 ### Formatting
 
@@ -249,6 +251,24 @@ etc.) match the markdownlint catalogue.
 - Wrap bare URLs in angle brackets: `<https://example.com>`.
 - No spaces inside link text: `[text](url)`, not `[ text ](url)`.
 - No empty link destinations: `[text]()` is not allowed.
+- **Always make internal file references markdown links** so
+  readers can navigate directly to the file on GitHub or in their
+  editor. The first mention of a repo-relative path in a sentence
+  should be a link, with the path itself as the link text wrapped in
+  backticks:
+
+  ```markdown
+  See [`src/redact.ts`](../src/redact.ts) for the secret-redaction
+  helper.
+  ```
+
+  Use a path relative to the containing markdown file (`../src/...`
+  from `docs/`, `src/...` from the repo root). Subsequent
+  back-to-back mentions of the same file in the same paragraph may
+  be plain `` `inline code` ``. Pure-text references (file
+  *categories* like "`.cjs` files", config keys like
+  `package.json#main`, or generated artifacts like `out/extension.js`
+  that don't exist in source control) do **not** need to be links.
 
 ### Other (MD027, MD028, MD035)
 
@@ -286,30 +306,35 @@ etc.) match the markdownlint catalogue.
 ### Comments and trailing commas
 
 - **Strict JSON (`.json`)**: no comments, no trailing commas. Many
-  `.json` files in this repo (notably `tsconfig.json`,
-  `.vscode/settings.json`, `.vscode/launch.json`,
-  `.vscode/tasks.json`) are interpreted by VS Code as **JSONC** and
-  tolerate both — assume JSONC when editing any file under
-  `.vscode/` or `tsconfig*.json`, and strict JSON everywhere else.
+  `.json` files in this repo (notably
+  [`tsconfig.json`](../tsconfig.json),
+  [`.vscode/launch.json`](../.vscode/launch.json),
+  [`.vscode/tasks.json`](../.vscode/tasks.json),
+  [`.vscode/extensions.json`](../.vscode/extensions.json)) are
+  interpreted by VS Code as **JSONC** and tolerate both — assume
+  JSONC when editing any file under `.vscode/` or `tsconfig*.json`,
+  and strict JSON everywhere else.
 - **JSONC (`.jsonc`)**: `//` line comments and `/* block */`
   comments are permitted. Trailing commas on the last item of an
   object/array are permitted.
 
 ### Specific files
 
-- `package.json` — npm controls key ordering for top-level standard
-  fields; preserve the existing order. Add new dependencies via
-  `npm install --save[-dev]`, not by hand-editing.
-- `package-lock.json` — **do not hand-edit**. Regenerate via
-  `npm install` or `npm ci`.
-- `tsconfig.json` — JSONC; comments allowed and used.
+- [`package.json`](../package.json) — npm controls key ordering for
+  top-level standard fields; preserve the existing order. Add new
+  dependencies via `npm install --save[-dev]`, not by hand-editing.
+- [`package-lock.json`](../package-lock.json) — **do not hand-edit**.
+  Regenerate via `npm install` or `npm ci`.
+- [`tsconfig.json`](../tsconfig.json) — JSONC; comments allowed and
+  used.
 
 ## CSS
 
 *Applies to: `**/*.css`.*
 
 Most styling in this extension is emitted as inline `<style>` blocks
-inside webview HTML built by `src/session-manager.ts` and friends.
+inside webview HTML built by
+[`src/session-manager.ts`](../src/session-manager.ts) and friends.
 Standalone `.css` files are limited to vendor assets in
 `out/codicons/` (do not edit) and any user-shipped overrides. These
 rules apply to hand-written `.css` files.
@@ -372,10 +397,11 @@ rules apply to hand-written `.css` files.
 *Applies to: `**/*.html`, `**/*.htm`.*
 
 Webview HTML in this extension is **built from TypeScript template
-strings** in `src/session-manager.ts` and the webview entry points
-under `src/views/`, not from standalone `.html` files. When editing
-those template strings, treat the embedded HTML as if it were a
-standalone file and follow these same rules.
+strings** in [`src/session-manager.ts`](../src/session-manager.ts)
+and the webview entry points under
+[`src/views/`](../src/views/), not from standalone `.html` files.
+When editing those template strings, treat the embedded HTML as if
+it were a standalone file and follow these same rules.
 
 ### Formatting
 
@@ -401,8 +427,8 @@ standalone file and follow these same rules.
 - `<meta charset="utf-8">` is the first child of `<head>`.
 - `<meta http-equiv="Content-Security-Policy" content="...">`
   follows the charset meta in every webview HTML — see
-  `src/views/csp.ts` for the builder. Never hand-craft a CSP —
-  always go through `buildRenderedViewCsp` /
+  [`src/views/csp.ts`](../src/views/csp.ts) for the builder. Never
+  hand-craft a CSP — always go through `buildRenderedViewCsp` /
   `buildCommentInputCsp`.
 - Reference webview resources via `webview.asWebviewUri(...)`
   results, never with raw file paths or `file://` URIs.
@@ -422,9 +448,11 @@ standalone file and follow these same rules.
 
 - All inline `<script>` and `<style>` tags must carry the per-load
   `nonce` attribute that the CSP allows. Generate the nonce with
-  `generateNonce()` from `src/views/csp.ts`.
+  `generateNonce()` from
+  [`src/views/csp.ts`](../src/views/csp.ts).
 - No inline event handlers (`onclick="..."`). Wire events from the
   webview's compiled IIFE entry point (`src/views/*/main.ts`).
 - Codicon glyphs render through
   `<span class="codicon codicon-NAME">` with the bundled
-  `codicon.css` (copied to `out/codicons/` by `esbuild.js`).
+  `codicon.css` (copied to `out/codicons/` by
+  [`esbuild.js`](../esbuild.js)).
