@@ -3,16 +3,17 @@
     Source for media/marketplace.png (the marketplace tile referenced from
     package.json "icon"). Regenerate the PNG with:
 
-      magick -background none -density 768 media/marketplace.svg \
-          -resize 256x256 PNG32:media/marketplace.png
+      magick -background none -density 1536 media/marketplace.svg \
+          -resize 512x512 PNG32:media/marketplace.png
 
     Notes:
     * The marketplace icon must be PNG (the VS Code marketplace rejects
       SVG for security reasons). We keep the SVG here purely as the
       regenerable source.
-    * 256x256 is the sweet spot: sharp on 2x HiDPI displays where the
-      marketplace renders the icon up to ~128px, and PNG compression
-      keeps the file under 10 KB.
+    * 512x512 covers 3x HiDPI / Retina-class displays where the
+      marketplace can render the icon at substantial physical pixel
+      density. PNG compression keeps a flat-color design like this
+      under 15 KB at 512x512.
     * The -background flag MUST precede the input file so it applies
       during SVG rasterization; otherwise transparent regions are
       flattened to white.
