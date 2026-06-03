@@ -1,5 +1,152 @@
 // SPDX-License-Identifier: MIT
-// Rendered-View webview entry. Scaffold-only at TASK-001; real
-// implementation arrives in TASK-013.
+// Rendered-View webview bootstrap.
+//
+// Responsibilities:
+//   1. Receive `init` payload (HTML + threads + diff annotations) from host.
+//   2. Inject HTML into <article id="content">.
+//   3. Initialize selection handler, thread markers, and (lazily) mermaid.
+//
+// The webview NEVER calls markdown-it. All rendering happens in the host.
+
+import type {
+    HostToRenderedView,
+    RenderedViewInitPayload,
+    RenderedViewToHost,
+    Thread
+} from '../../types';
+import { initMermaid } from './mermaid-loader';
+import { attachSelectionHandlers, captureSelection } from './selection-handler';
+import { mountThreadMarkers, refreshThreadMarkers } from './selection-highlight';
+
+declare function acquireVsCodeApi(): {
+    postMessage: (msg: RenderedViewToHost) => void;
+    setState: (state: unknown) => void;
+    getState: () => unknown;
+};
+
+const vscode = acquireVsCodeApi();
+
+interface ViewState {
+    init: RenderedViewInitPayload | null;
+    threads: Thread[];
+}
+
+const state: ViewState = { init: null, threads: [] };
+
+function post(message: RenderedViewToHost): void {
+    vscode.postMessage(message);
+}
+
+function log(level: 'info' | 'warn' | 'error', message: string, context?: unknown): void {
+    post({ type: 'log', payload: { level, message, context } });
+}
+
+window.addEventListener('message', (event: MessageEvent<HostToRenderedView>) => {
+    const msg = event.data;
+    try {
+        switch (msg.type) {
+            case 'init':
+                onInit(msg.payload);
+                break;
+            case 'threadCreated':
+                state.threads.push(msg.payload.thread);
+                refreshThreadMarkers(state.threads);
+                break;
+            case 'threadsRefreshed':
+                state.threads = msg.payload.threads;
+                refreshThreadMarkers(state.threads);
+                break;
+            case 'selectionCleared':
+                clearSelection();
+                break;
+            case 'staleCommit':
+                showStaleBanner(msg.payload.newSha, msg.payload.oldSha);
+                break;
+            case 'error':
+                showError(msg.payload.code, msg.payload.message);
+                break;
+            default:
+                log('warn', 'Unknown host message', msg);
+        }
+    } catch (err) {
+        log('error', 'Failed to handle host message', String(err));
+    }
+});
+
+function onInit(payload: RenderedViewInitPayload): void {
+    state.init = payload;
+    state.threads = payload.threads ?? [];
+    const article = document.getElementById('content') as HTMLElement | null;
+    if (!article) {
+        log('error', 'Content element missing');
+        return;
+    }
+    article.innerHTML = payload.fileContent.html;
+    document.body.setAttribute('data-file-path', payload.filePath);
+    setHeader(payload);
+    attachSelectionHandlers({
+        onSelection: (sel) => {
+            const payload = captureSelection(sel);
+            if (payload) {
+                post({ type: 'selectionMade', payload });
+            }
+        }
+    });
+    mountThreadMarkers(state.threads, article);
+    initMermaid({
+        onError: (msg) => log('warn', 'Mermaid render failure', msg)
+    });
+}
+
+function setHeader(payload: RenderedViewInitPayload): void {
+    const banner = document.getElementById('pr-banner');
+    if (!banner) return;
+    banner.textContent =
+        `PR #${payload.pullRequest.id}: ${payload.pullRequest.title} ` +
+        `(${payload.pullRequest.sourceRef} → ${payload.pullRequest.targetRef})`;
+}
+
+function clearSelection(): void {
+    const sel = window.getSelection();
+    if (sel) sel.removeAllRanges();
+}
+
+function showStaleBanner(newSha: string, oldSha: string): void {
+    const banner = ensureBanner();
+    banner.className = 'banner warn';
+    banner.innerHTML =
+        `<strong>Newer commit available.</strong> ` +
+        `Refresh to head <code>${escapeHtml(newSha.slice(0, 8))}</code> ` +
+        `(currently viewing <code>${escapeHtml(oldSha.slice(0, 8))}</code>).` +
+        `<button id="refresh-to-head-btn">Refresh</button>`;
+    const btn = banner.querySelector('#refresh-to-head-btn');
+    btn?.addEventListener('click', () => post({ type: 'refreshToHead' }));
+}
+
+function showError(code: string, message: string): void {
+    const banner = ensureBanner();
+    banner.className = 'banner error';
+    banner.textContent = `[${code}] ${message}`;
+}
+
+function ensureBanner(): HTMLElement {
+    let banner = document.getElementById('runtime-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'runtime-banner';
+        document.body.insertBefore(banner, document.body.firstChild);
+    }
+    return banner;
+}
+
+function escapeHtml(s: string): string {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+post({ type: 'ready' });
 
 export {};

@@ -11,8 +11,7 @@
 //     data-source-line-end = end (inclusive).
 
 import MarkdownIt from 'markdown-it';
-
-type Token = MarkdownIt.Token;
+import type Token from 'markdown-it/lib/token.mjs';
 
 const BLOCK_TOKEN_OPENERS = new Set([
     'paragraph_open',

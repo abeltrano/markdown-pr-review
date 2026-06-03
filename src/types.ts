@@ -137,10 +137,10 @@ export interface Session {
 // ---------------------------------------------------------------------------
 
 export interface AdoSettings {
-    defaultOrganization: string;
-    defaultProject: string;
+    defaultOrganization?: string;
+    defaultProject?: string;
     /** Clamped to [15, 60]; default 30 */
-    staleCommitPollSeconds: number;
+    staleCommitPollSeconds?: number;
 }
 
 // ---------------------------------------------------------------------------

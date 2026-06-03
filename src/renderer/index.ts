@@ -7,11 +7,9 @@
 // The renderer always runs in the extension host; the resulting HTML
 // string is shipped to the webview via postMessage `init`.
 
-import MarkdownIt from 'markdown-it';
+import type Token from 'markdown-it/lib/token.mjs';
 import { createMarkdownIt } from './markdown-it-config';
 import type { DiffAnnotation, RenderResult } from '../types';
-
-type Token = MarkdownIt.Token;
 
 export interface RenderOptions {
     markdown: string;

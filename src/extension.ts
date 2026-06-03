@@ -1,32 +1,58 @@
 // SPDX-License-Identifier: MIT
-// Extension entry point. Real wiring is added in TASK-020;
-// for now (TASK-001 scaffold) this is a no-op activate/deactivate
-// that proves the extension loads.
+// Extension entry point. Wires together:
+//   - VsCodeAuthManager
+//   - SessionManager
+//   - CommentInputViewProvider (sidebar)
+//   - RenderedViewEditorProvider (custom editor for adopr://)
+//   - FileTreeProvider (sidebar tree of changed files)
+//   - Command registry (5 commands)
 
 import * as vscode from 'vscode';
+import { getLogger } from './logger';
+import { VsCodeAuthManager } from './auth-manager';
+import { SessionManager } from './session-manager';
+import { CommentInputViewProvider } from './comment-input-view-provider';
+import { RenderedViewEditorProvider } from './views/custom-editor-provider';
+import { FileTreeProvider } from './views/file-tree-provider';
+import { registerCommands } from './command-registry';
 
 export function activate(context: vscode.ExtensionContext): void {
-    const channel = vscode.window.createOutputChannel('ADO Markdown PR Reviewer');
-    context.subscriptions.push(channel);
-    channel.appendLine(`[${new Date().toISOString()}] ADO Markdown PR Reviewer activated (scaffold).`);
+    const log = getLogger('Extension');
+    log.info('Activating ADO Markdown PR Reviewer.');
 
-    for (const cmd of [
-        'adoMdReview.openPullRequest',
-        'adoMdReview.focusRenderedView',
-        'adoMdReview.focusCommentInput',
-        'adoMdReview.refreshThreads',
-        'adoMdReview.commentOnSelection'
-    ]) {
-        context.subscriptions.push(
-            vscode.commands.registerCommand(cmd, () => {
-                void vscode.window.showInformationMessage(
-                    `${cmd} not yet implemented (scaffold stage).`
-                );
-            })
-        );
-    }
+    const auth = new VsCodeAuthManager(context);
+    const sessionManager = new SessionManager(context, auth);
+    const inputView = new CommentInputViewProvider(context, sessionManager);
+    sessionManager.setInputView(inputView);
+
+    // Custom editor for adopr:// URIs.
+    context.subscriptions.push(
+        vscode.window.registerCustomEditorProvider(
+            RenderedViewEditorProvider.viewType,
+            new RenderedViewEditorProvider(context, sessionManager),
+            { supportsMultipleEditorsPerDocument: false, webviewOptions: { retainContextWhenHidden: true } }
+        )
+    );
+
+    // Comment input sidebar.
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(CommentInputViewProvider.viewId, inputView)
+    );
+
+    // Changed-files tree.
+    const treeProvider = new FileTreeProvider(sessionManager);
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider('adoMdReview.fileTree', treeProvider)
+    );
+
+    // Commands.
+    registerCommands(context, sessionManager, inputView);
+
+    context.subscriptions.push({ dispose: () => sessionManager.dispose() });
+
+    log.info('Activation complete.');
 }
 
 export function deactivate(): void {
-    // Nothing to clean up at the scaffold stage.
+    // Cleanup handled by context.subscriptions disposers.
 }

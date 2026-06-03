@@ -13,31 +13,133 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:adoMdReview.openPullRequest",
+    "onView:adoMdReview.fileTree",
+    "onView:adoMdReview.commentInput",
+    "onCustomEditor:adoMdReview.renderedView"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "adoMdReview.openPullRequest",
-        "title": "ADO MD Review: Open Pull Request"
-      },
-      {
-        "command": "adoMdReview.focusRenderedView",
-        "title": "ADO MD Review: Focus Rendered View"
-      },
-      {
-        "command": "adoMdReview.focusCommentInput",
-        "title": "ADO MD Review: Focus Comment Input"
+        "title": "ADO MD Review: Open Pull Request…",
+        "category": "ADO MD Review"
       },
       {
         "command": "adoMdReview.refreshThreads",
-        "title": "ADO MD Review: Refresh Threads"
+        "title": "ADO MD Review: Refresh Threads",
+        "category": "ADO MD Review",
+        "icon": "$(refresh)"
       },
       {
-        "command": "adoMdReview.commentOnSelection",
-        "title": "ADO MD Review: Comment on Selection"
+        "command": "adoMdReview.addComment",
+        "title": "ADO MD Review: Add Comment to Selection",
+        "category": "ADO MD Review"
+      },
+      {
+        "command": "adoMdReview.refreshToHead",
+        "title": "ADO MD Review: Refresh to Head Commit",
+        "category": "ADO MD Review"
+      },
+      {
+        "command": "adoMdReview.closeSession",
+        "title": "ADO MD Review: Close Session",
+        "category": "ADO MD Review"
       }
-    ]
+    ],
+    "keybindings": [
+      {
+        "command": "adoMdReview.addComment",
+        "key": "ctrl+alt+c",
+        "mac": "cmd+alt+c",
+        "when": "activeCustomEditorId == 'adoMdReview.renderedView'"
+      },
+      {
+        "command": "adoMdReview.refreshThreads",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "when": "activeCustomEditorId == 'adoMdReview.renderedView'"
+      },
+      {
+        "command": "adoMdReview.refreshToHead",
+        "key": "f5",
+        "when": "activeCustomEditorId == 'adoMdReview.renderedView'"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "adoMdReview",
+          "title": "ADO MD Review",
+          "icon": "$(comment-discussion)"
+        }
+      ]
+    },
+    "views": {
+      "adoMdReview": [
+        {
+          "id": "adoMdReview.fileTree",
+          "name": "Changed Files",
+          "icon": "$(files)"
+        },
+        {
+          "id": "adoMdReview.commentInput",
+          "name": "Comment Input",
+          "type": "webview",
+          "icon": "$(comment)"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "adoMdReview.refreshThreads",
+          "when": "view == adoMdReview.fileTree",
+          "group": "navigation"
+        },
+        {
+          "command": "adoMdReview.openPullRequest",
+          "when": "view == adoMdReview.fileTree",
+          "group": "navigation"
+        }
+      ]
+    },
+    "customEditors": [
+      {
+        "viewType": "adoMdReview.renderedView",
+        "displayName": "ADO MD Rendered View",
+        "selector": [
+          { "filenamePattern": "*.md" },
+          { "filenamePattern": "*.markdown" },
+          { "filenamePattern": "*.mdx" }
+        ],
+        "priority": "option"
+      }
+    ],
+    "configuration": {
+      "title": "ADO Markdown PR Reviewer",
+      "properties": {
+        "adoMdReview.defaultOrganization": {
+          "type": "string",
+          "default": "",
+          "description": "Default Azure DevOps organization (used for bare-PR-id input)."
+        },
+        "adoMdReview.defaultProject": {
+          "type": "string",
+          "default": "",
+          "description": "Default Azure DevOps project (used for bare-PR-id input)."
+        },
+        "adoMdReview.staleCommitPollSeconds": {
+          "type": "number",
+          "default": 30,
+          "minimum": 15,
+          "maximum": 60,
+          "description": "How often to check for a newer head commit on the active PR (seconds)."
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "tsc --noEmit && node esbuild.js",

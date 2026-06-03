@@ -32,22 +32,23 @@ export function buildAdoprUri(ref: PullRequestRef, filePath: string): vscode.Uri
 /**
  * Parse an adopr:// URI back into its components.
  */
-export function parseAdoprUri(uri: vscode.Uri): {
+export function parseAdoprUri(uri: vscode.Uri | string): {
     organization: string;
     project: string;
     repositoryId: string;
     pullRequestId: number;
     filePath: string;
 } {
-    if (uri.scheme !== ADOPR_SCHEME) {
-        throw new Error(`parseAdoprUri: not an adopr:// URI (scheme=${uri.scheme}).`);
+    const u = typeof uri === 'string' ? vscode.Uri.parse(uri) : uri;
+    if (u.scheme !== ADOPR_SCHEME) {
+        throw new Error(`parseAdoprUri: not an adopr:// URI (scheme=${u.scheme}).`);
     }
-    const org = uri.authority;
+    const org = u.authority;
     if (!org) {
         throw new Error('parseAdoprUri: missing organization (authority).');
     }
     // path is "/{project}/{repoId}/{prId}{filePath}"
-    const path = uri.path;
+    const path = u.path;
     const segments = path.split('/');
     // segments[0] is empty (leading slash); we need at least 4 segments past it
     if (segments.length < 5) {

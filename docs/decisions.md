@@ -42,6 +42,87 @@ rationale, and links back to the relevant requirement / open question.
 
 ---
 
+## D-011 (2026-06-03 02:50 PT) — Mermaid bundled into rendered-view IIFE via dynamic import
+
+- **Context**: TASK-013 webview bundling. Mermaid v10 is ESM-only;
+  shipping a separate `mermaid.js` script tag inside the webview was
+  the alternative.
+- **Decision**: Bundle mermaid into `rendered-view/main.js` via a
+  dynamic `import('mermaid')` inside `mermaid-loader.ts`. esbuild
+  inlines it at bundle time; runtime cost is paid only on init.
+- **Rationale**: Simpler CSP — no extra script tag, only the
+  per-panel nonce. Production bundle is 3.3 MB (compressed in vsix)
+  which is acceptable for a personal-use tool. Alternative
+  (separate script tag with nonce) doubles the surface area for CSP
+  bugs without saving bytes.
+- **REQ/OQ**: REQ-NFR-SEC-001 AC-3, ASM-009; design.md §3.2 Mermaid
+  fence rule.
+
+---
+
+## D-012 (2026-06-03 02:50 PT) — `moduleResolution: Bundler` over `Node16`
+
+- **Context**: TASK-013 — markdown-it deep imports + mermaid ESM
+  imports conflicted with `moduleResolution: Node16`'s strict CJS/ESM
+  interop rules.
+- **Decision**: Switch `tsconfig.json` to
+  `"module": "ESNext", "moduleResolution": "Bundler"`. The actual
+  emission is done by esbuild (host: CJS, webviews: IIFE), not by
+  tsc, so the type-checker can match the bundler's resolution rules.
+- **Rationale**: This is the TypeScript-recommended setup for any
+  project that uses an external bundler. Tsc is used only for type
+  validation (`--noEmit`); esbuild knows how to handle deep imports
+  and ESM-only packages in either output format.
+- **REQ/OQ**: None.
+
+---
+
+## D-013 (2026-06-03 02:50 PT) — Refresh-to-Head stub in v0.1
+
+- **Context**: TASK-019 command-registry. The Refresh-to-Head command
+  is a v0.4 feature (TASK-034) per the implementation plan, but it
+  needs to exist now so the F5 keybinding doesn't crash.
+- **Decision**: v0.1 stub shows an info toast ("close + reopen the
+  PR in v0.1") and logs the request. v0.4 will replace it with the
+  full polling + refresh implementation.
+- **Rationale**: Better to ship the binding and a clear deferred-
+  feature message than to leave the keystroke silently failing.
+- **REQ/OQ**: REQ-PR-005 (deferred to v0.4).
+
+---
+
+## D-014 (2026-06-03 02:50 PT) — Selection-Made minimum char length defaults to 1
+
+- **Context**: TASK-013 selection-handler. The webview captures the
+  user's selection on `mouseup` / `keyup`. A single accidentally-
+  dragged character would fire `selectionMade` constantly.
+- **Decision**: Default `minLength = 1`. Future iteration may raise
+  this to 2 or 3 if posting accidental single-char comments becomes
+  a real problem.
+- **Rationale**: User pain point is reviewers wanting to comment on
+  precise items including small inline tokens like `&nbsp;` or
+  punctuation. Filtering at 1 char keeps the door open; the host
+  can still reject zero-length normalized selections downstream.
+- **REQ/OQ**: REQ-COMMENT-001.
+
+---
+
+## D-015 (2026-06-03 02:50 PT) — Bare-PR-id repositoryName left empty
+
+- **Context**: TASK-007. Bare-id parse path can't infer the repo
+  without a fourth setting; design.md is silent on the trade-off.
+- **Decision**: Return `repositoryId: ''` and `repositoryName: ''`
+  for bare-id input. SessionManager's first ADO call will surface
+  a clear "repo unknown" failure if the user lacks a default repo
+  hint.
+- **Rationale**: Adding a 3rd setting (defaultRepository) would
+  require either a UI to manage it or a one-off prompt — both
+  outside v0.1 scope. Letting the failure surface gives users a
+  clear signal to enter a full URL instead.
+- **REQ/OQ**: REQ-PR-001.
+
+---
+
 ## D-003 (2026-06-03 02:10 PT) — Node 20 built-in `fetch` (no `node-fetch`)
 
 - **Context**: TASK-008 (`src/ado-client.ts`) HTTP layer.
