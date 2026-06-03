@@ -38,12 +38,16 @@ export function buildRenderedViewCsp(opts: {
     webview: vscode.Webview;
 }): string {
     const src = opts.webview.cspSource;
+    // https: is permitted in style-src and font-src so user-configured
+    // `markdown.styles` entries that point at HTTPS URLs (or that
+    // @font-face web fonts) load correctly. Local file:// styles are
+    // already covered by ${src} via the webview's resource scheme.
     return [
         `default-src 'none'`,
         `img-src ${src} https: data:`,
         `script-src 'nonce-${opts.nonce}' ${src}`,
-        `style-src ${src} 'unsafe-inline'`,
-        `font-src ${src} data:`,
+        `style-src ${src} 'unsafe-inline' https:`,
+        `font-src ${src} https: data:`,
         `connect-src 'none'`
     ].join('; ');
 }

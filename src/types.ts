@@ -177,6 +177,7 @@ export type HostToRenderedView =
     | { type: 'selectionCleared' }
     | { type: 'error'; payload: ErrorPayload }
     | { type: 'staleCommit'; payload: { newSha: string; oldSha: string } }
+    | { type: 'restyle'; payload: RestylePayload }
     | {
         type: 'diffApplied';
         payload: {
@@ -185,6 +186,19 @@ export type HostToRenderedView =
             diffAnnotations: DiffAnnotation[];
         };
     };
+
+/**
+ * Payload for live style updates pushed when the user's
+ * `markdown.preview.*` or `markdown.styles` settings change.
+ * The host re-resolves user style entries to webview-loadable URIs
+ * before sending, so the webview can drop them straight into `<link>`s.
+ */
+export interface RestylePayload {
+    fontFamily: string;
+    fontSize: number;
+    lineHeight: number;
+    userStyleUris: string[];
+}
 
 export interface RenderedViewInitPayload {
     sessionId: string;

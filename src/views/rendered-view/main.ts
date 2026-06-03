@@ -12,6 +12,7 @@ import type {
     HostToRenderedView,
     RenderedViewInitPayload,
     RenderedViewToHost,
+    RestylePayload,
     Thread
 } from '../../types';
 import { initMermaid } from './mermaid-loader';
@@ -64,6 +65,9 @@ window.addEventListener('message', (event: MessageEvent<HostToRenderedView>) => 
                 break;
             case 'staleCommit':
                 showStaleBanner(msg.payload.newSha, msg.payload.oldSha);
+                break;
+            case 'restyle':
+                onRestyle(msg.payload);
                 break;
             case 'error':
                 showError(msg.payload.code, msg.payload.message);
@@ -170,6 +174,29 @@ function escapeHtml(s: string): string {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+}
+
+// Apply a live style refresh pushed by the host after the user
+// changed `markdown.preview.*` or `markdown.styles`. Updates the
+// :root CSS variables that drive the prose font, then replaces
+// the user-stylesheet <link> elements wholesale so the cascade
+// reflects exactly what the user has currently configured.
+function onRestyle(payload: RestylePayload): void {
+    const root = document.documentElement;
+    root.style.setProperty('--markdown-font-family', payload.fontFamily);
+    root.style.setProperty('--markdown-font-size', `${payload.fontSize}px`);
+    root.style.setProperty('--markdown-line-height', String(payload.lineHeight));
+    const head = document.head;
+    head
+        .querySelectorAll('link[data-user-style="true"]')
+        .forEach((el) => el.remove());
+    for (const uri of payload.userStyleUris) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.setAttribute('data-user-style', 'true');
+        link.href = uri;
+        head.appendChild(link);
+    }
 }
 
 post({ type: 'ready' });

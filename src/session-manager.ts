@@ -8,6 +8,7 @@
 //   - Routing webview ↔ comment-controller ↔ ado-client
 
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { HttpAdoClient, type AdoClient } from './ado-client';
 import { CommentController } from './comment-controller';
 import type { CommentInputViewProvider } from './comment-input-view-provider';
@@ -54,6 +55,21 @@ export class SessionManager {
         auth: AuthManager
     ) {
         this.adoClient = new HttpAdoClient(auth);
+        // Live-refresh open rendered-view panels when user-controllable
+        // markdown styling changes. We re-resolve the markdown.styles
+        // entries and post a 'restyle' message to each open webview so
+        // the page updates without a full reload (preserves scroll
+        // position and thread-popover state).
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration((e) => {
+                if (
+                    e.affectsConfiguration('markdown.styles') ||
+                    e.affectsConfiguration('markdown.preview')
+                ) {
+                    this.restyleAllOpenPanels();
+                }
+            })
+        );
     }
 
     setInputView(view: CommentInputViewProvider): void {
@@ -148,6 +164,17 @@ export class SessionManager {
 
         // Build HTML envelope for the panel.
         const distRoot = vscode.Uri.joinPath(this.context.extensionUri, 'out');
+        const userStyles = this.resolveUserStyles(panel.webview);
+        // Re-set the webview options so user-configured markdown.styles
+        // file paths are reachable via the webview resource scheme.
+        // The CustomEditorProvider sets a baseline (enableScripts +
+        // distRoot); this overrides with the union. Must happen before
+        // we assign webview.html so the resource scheme covers the
+        // user-style <link> tags emitted there.
+        panel.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [distRoot, ...userStyles.roots]
+        };
         const nonce = generateNonce();
         const csp = buildRenderedViewCsp({ nonce, webview: panel.webview });
         const scriptUri = panel.webview.asWebviewUri(
@@ -171,7 +198,8 @@ export class SessionManager {
             codiconCssUri: panel.webview.asWebviewUri(
                 vscode.Uri.joinPath(this.context.extensionUri, 'out', 'codicons', 'codicon.css')
             ).toString(),
-            previewStyle: readMarkdownPreviewStyle()
+            previewStyle: readMarkdownPreviewStyle(),
+            userStyleUris: userStyles.uris
         });
 
         // Kick off head + base fetches in parallel so the base fetch can
@@ -405,6 +433,113 @@ export class SessionManager {
         return this.activeSession;
     }
 
+    /**
+     * Resolve the user's `markdown.styles` setting into:
+     *   - `uris`: webview-loadable URLs to feed into `<link rel="stylesheet">`
+     *   - `roots`: parent directories that must be added to localResourceRoots
+     *     so the webview can fetch each local stylesheet
+     *
+     * Entries are classified per the built-in markdown preview's behaviour:
+     *   - `http(s)://...` → used as-is (requires `https:` in CSP style-src)
+     *   - `file:///...`   → parsed and converted via asWebviewUri
+     *   - absolute path   → wrapped in vscode.Uri.file then asWebviewUri
+     *   - relative path   → resolved against the first workspace folder, or
+     *                       skipped (with a warning) when no workspace is open
+     *
+     * Invalid / malformed entries are logged and skipped so a single bad
+     * entry can't break the rendered view.
+     */
+    private resolveUserStyles(webview: vscode.Webview): {
+        uris: string[];
+        roots: vscode.Uri[];
+    } {
+        const raw = vscode.workspace
+            .getConfiguration('markdown')
+            .get<unknown>('styles');
+        const entries = Array.isArray(raw) ? raw : [];
+        const uris: string[] = [];
+        const roots: vscode.Uri[] = [];
+        const seenRoots = new Set<string>();
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri;
+        for (const entry of entries) {
+            if (typeof entry !== 'string') continue;
+            const trimmed = entry.trim();
+            if (trimmed.length === 0) continue;
+            try {
+                if (/^https?:\/\//i.test(trimmed)) {
+                    uris.push(trimmed);
+                    continue;
+                }
+                let fileUri: vscode.Uri;
+                if (/^file:\/\//i.test(trimmed)) {
+                    fileUri = vscode.Uri.parse(trimmed);
+                } else if (path.isAbsolute(trimmed)) {
+                    fileUri = vscode.Uri.file(trimmed);
+                } else if (workspaceFolder) {
+                    fileUri = vscode.Uri.joinPath(workspaceFolder, trimmed);
+                } else {
+                    this.log.warn(
+                        'Skipping relative markdown.styles entry (no workspace folder open).',
+                        { entry: trimmed }
+                    );
+                    continue;
+                }
+                uris.push(webview.asWebviewUri(fileUri).toString());
+                const dir = path.dirname(fileUri.fsPath);
+                if (!seenRoots.has(dir)) {
+                    seenRoots.add(dir);
+                    roots.push(vscode.Uri.file(dir));
+                }
+            } catch (err) {
+                this.log.warn('Failed to resolve markdown.styles entry; skipping.', {
+                    entry: trimmed,
+                    error: err instanceof Error ? err.message : String(err)
+                });
+            }
+        }
+        return { uris, roots };
+    }
+
+    /**
+     * Push a live style refresh to every open rendered-view panel.
+     * Invoked when the user changes `markdown.preview.*` or
+     * `markdown.styles`. We re-resolve user styles (including
+     * widening localResourceRoots if needed) and post a 'restyle'
+     * message so the page can swap CSS without a full reload.
+     */
+    private restyleAllOpenPanels(): void {
+        const session = this.activeSession;
+        if (!session) return;
+        const previewStyle = readMarkdownPreviewStyle();
+        const distRoot = vscode.Uri.joinPath(this.context.extensionUri, 'out');
+        for (const [uriKey, panel] of session.openedEditors) {
+            try {
+                const userStyles = this.resolveUserStyles(panel.webview);
+                // Re-widen localResourceRoots first so any newly-added
+                // user style file dir is reachable before the webview
+                // tries to fetch it via the swapped <link>.
+                panel.webview.options = {
+                    enableScripts: true,
+                    localResourceRoots: [distRoot, ...userStyles.roots]
+                };
+                void panel.webview.postMessage({
+                    type: 'restyle',
+                    payload: {
+                        fontFamily: previewStyle.fontFamily,
+                        fontSize: previewStyle.fontSize,
+                        lineHeight: previewStyle.lineHeight,
+                        userStyleUris: userStyles.uris
+                    }
+                } satisfies HostToRenderedView);
+            } catch (err) {
+                this.log.warn('Failed to restyle panel; skipping.', {
+                    uri: uriKey,
+                    error: err instanceof Error ? err.message : String(err)
+                });
+            }
+        }
+    }
+
     async disposeSession(): Promise<void> {
         if (!this.activeSession) return;
         for (const panel of this.activeSession.openedEditors.values()) {
@@ -431,7 +566,17 @@ function renderedViewHtml(opts: {
     scriptUri: string;
     codiconCssUri: string;
     previewStyle: { fontFamily: string; fontSize: number; lineHeight: number };
+    userStyleUris: string[];
 }): string {
+    // User-style <link>s are emitted AFTER our <style> block so they
+    // win the cascade for same-specificity selectors — matching the
+    // behaviour of VS Code's built-in markdown preview, which appends
+    // markdown.styles entries after its own stylesheet. The
+    // data-user-style attribute lets main.ts identify and replace them
+    // on live restyle.
+    const userStyleLinks = opts.userStyleUris
+        .map((uri) => `    <link rel="stylesheet" data-user-style="true" href="${escapeHtmlAttribute(uri)}">`)
+        .join('\n');
     return /* html */ `<!doctype html>
 <html lang="en">
 <head>
@@ -563,6 +708,7 @@ function renderedViewHtml(opts: {
         .banner.error { background: var(--vscode-inputValidation-errorBackground); color: var(--vscode-inputValidation-errorForeground); }
         ::selection { background: var(--vscode-editor-selectionBackground); color: var(--vscode-editor-selectionForeground); }
     </style>
+${userStyleLinks}
 </head>
 <body>
     <div id="pr-banner">Loading…</div>
@@ -600,6 +746,19 @@ function readMarkdownPreviewStyle(): { fontFamily: string; fontSize: number; lin
             ? rawLine
             : PREVIEW_DEFAULT_LINE_HEIGHT
     };
+}
+
+// Escape a string for safe inclusion as an HTML attribute value.
+// User-style URIs come from VS Code config and are typically benign,
+// but neutralise embedded quotes/angle-brackets defensively to avoid
+// attribute-context injection in the rendered HTML.
+function escapeHtmlAttribute(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
 // Escape a string for safe inclusion inside a CSS value. The font-family
