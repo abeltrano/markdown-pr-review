@@ -176,7 +176,7 @@
     "@vscode/codicons": "^0.0.45",
     "@vscode/vsce": "^2.32.0",
     "chai": "^4.5.0",
-    "esbuild": "^0.23.0",
+    "esbuild": "^0.25.0",
     "eslint": "^9.0.0",
     "mocha": "^11.7.6",
     "ts-node": "^10.9.2",
@@ -189,5 +189,11 @@
     "diff": "^5.2.0",
     "markdown-it": "^14.1.0",
     "mermaid": "^10.9.1"
+  },
+  "overrides": {
+    "mocha": {
+      "diff": "^8.0.3",
+      "serialize-javascript": "^7.0.5"
+    }
   }
 }
