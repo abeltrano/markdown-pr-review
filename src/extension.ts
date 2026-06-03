@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const log = getLogger('Extension');
     const version =
         (context.extension?.packageJSON?.version as string | undefined) ?? 'unknown';
-    log.info(`Activating ADO Markdown PR Reviewer v${version}.`);
+    log.info(`Activating Markdown PR Review v${version}.`);
 
     const auth = new VsCodeAuthManager(context);
     const sessionManager = new SessionManager(context, auth);

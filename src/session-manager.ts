@@ -423,7 +423,7 @@ function renderedViewHtml(opts: { csp: string; nonce: string; scriptUri: string 
 <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Security-Policy" content="${opts.csp}">
-    <title>ADO MD Review</title>
+    <title>Markdown PR Review</title>
     <style>
         body { font-family: var(--vscode-editor-font-family); margin: 0; padding: 0; }
         #pr-banner { padding: 6px 12px; background: var(--vscode-editorWidget-background); border-bottom: 1px solid var(--vscode-editorWidget-border); font-size: 0.85em; }

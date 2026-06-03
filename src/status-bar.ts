@@ -18,7 +18,7 @@ export class StatusBarController implements vscode.Disposable {
     constructor() {
         this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         this.item.command = FOCUS_RENDERED_VIEW_COMMAND;
-        this.item.tooltip = 'Click to focus the ADO MD Review rendered editor';
+        this.item.tooltip = 'Click to focus the Markdown PR Review rendered editor';
         this.item.hide();
 
         this.disposables.push(
@@ -49,7 +49,7 @@ export class StatusBarController implements vscode.Disposable {
         if (!this.currentSession) return;
         const firstOpenedUri = this.currentSession.openedEditors.keys().next().value;
         if (!firstOpenedUri) {
-            void vscode.window.showInformationMessage('No ADO MD Review editor is currently open.');
+            void vscode.window.showInformationMessage('No Markdown PR Review editor is currently open.');
             return;
         }
         const uri = vscode.Uri.parse(firstOpenedUri);

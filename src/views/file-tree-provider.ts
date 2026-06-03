@@ -107,7 +107,7 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
             return [
                 {
                     kind: 'message',
-                    label: 'No active PR. Run "ADO MD Review: Open PR…" to start.',
+                    label: 'No active PR. Run "Markdown PR Review: Open Pull Request…" to start.',
                     tooltip: 'Press Ctrl+Shift+P and run the command.'
                 }
             ];

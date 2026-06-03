@@ -13,7 +13,7 @@ import {
 // Re-export for callers (and unit tests) that already pull from logger.
 export { redactAuthHeaders } from './redact';
 
-const CHANNEL_NAME = 'ADO Markdown PR Reviewer';
+const CHANNEL_NAME = 'Markdown PR Review';
 
 export type LogLevel = 'info' | 'warn' | 'error';
 

@@ -1,8 +1,8 @@
 {
   "name": "ado-markdown-pr-reviewer",
-  "displayName": "ADO Markdown PR Reviewer",
+  "displayName": "Markdown PR Review",
   "description": "Review Azure DevOps PR markdown files in a rendered view and post comments anchored to raw line ranges.",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "publisher": "anbeltra",
   "private": true,
   "license": "MIT",
@@ -25,28 +25,28 @@
       {
         "command": "adoMdReview.openPullRequest",
         "title": "Open Pull Request…",
-        "category": "ADO MD Review"
+        "category": "Markdown PR Review"
       },
       {
         "command": "adoMdReview.refreshThreads",
         "title": "Refresh Threads",
-        "category": "ADO MD Review",
+        "category": "Markdown PR Review",
         "icon": "$(refresh)"
       },
       {
         "command": "adoMdReview.addComment",
         "title": "Add Comment to Selection",
-        "category": "ADO MD Review"
+        "category": "Markdown PR Review"
       },
       {
         "command": "adoMdReview.refreshToHead",
         "title": "Refresh to Head Commit",
-        "category": "ADO MD Review"
+        "category": "Markdown PR Review"
       },
       {
         "command": "adoMdReview.closeSession",
         "title": "Close Session",
-        "category": "ADO MD Review"
+        "category": "Markdown PR Review"
       }
     ],
     "keybindings": [
@@ -72,7 +72,7 @@
       "activitybar": [
         {
           "id": "adoMdReview",
-          "title": "ADO MD Review",
+          "title": "Markdown PR Review",
           "icon": "$(comment-discussion)"
         }
       ]
@@ -109,7 +109,7 @@
     "customEditors": [
       {
         "viewType": "adoMdReview.renderedView",
-        "displayName": "ADO MD Rendered View",
+        "displayName": "Markdown PR Review",
         "selector": [
           {
             "filenamePattern": "*.md"
@@ -125,7 +125,7 @@
       }
     ],
     "configuration": {
-      "title": "ADO Markdown PR Reviewer",
+      "title": "Markdown PR Review",
       "properties": {
         "adoMdReview.defaultOrganization": {
           "type": "string",

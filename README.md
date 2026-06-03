@@ -1,4 +1,4 @@
-# ADO Markdown PR Reviewer
+# Markdown PR Review
 
 > A Visual Studio Code extension that lets you review markdown design
 > and architecture documents in Azure DevOps pull requests using a
@@ -32,7 +32,7 @@ ADO PR thread.
 
 This extension is distributed as a sideloaded `.vsix`:
 
-1. Download `ado-markdown-pr-reviewer-0.4.0.vsix` from this repo root.
+1. Download the latest `ado-markdown-pr-reviewer-*.vsix` from this repo root.
 2. In VS Code: **Extensions** sidebar → `...` menu →
    **Install from VSIX…** → pick the file.
 3. Reload VS Code if prompted.
@@ -40,7 +40,7 @@ This extension is distributed as a sideloaded `.vsix`:
 Alternative (command line):
 
 ```powershell
-code --install-extension .\ado-markdown-pr-reviewer-0.4.0.vsix
+code --install-extension .\ado-markdown-pr-reviewer-0.4.11.vsix
 ```
 
 ### Build from source
@@ -58,13 +58,13 @@ Code (the launch config is wired up).
 
 ## Quick start
 
-1. **Open a PR**: `Ctrl+Shift+P` → `ADO MD Review: Open Pull
+1. **Open a PR**: `Ctrl+Shift+P` → `Markdown PR Review: Open Pull
    Request…`. Paste the PR URL (e.g.,
    `https://dev.azure.com/contoso/MyProject/_git/MyRepo/pullrequest/12345`).
    On first use you will be prompted to sign in via the Microsoft
    account provider (or to enter a Personal Access Token if MSAL is not
    available).
-2. **Pick a file**: the **ADO MD Review** activity-bar view shows all
+2. **Pick a file**: the **Markdown PR Review** activity-bar view shows all
    `.md`/`.markdown`/`.mdx` files in the PR. Click one to open it in
    the rendered viewer. Clicking a non-markdown file shows a hint to
    review it in the ADO web UI.
@@ -86,11 +86,11 @@ Code (the launch config is wired up).
 
 | Command                                  | Default key       | Notes                                                            |
 | ---------------------------------------- | ----------------- | ---------------------------------------------------------------- |
-| **ADO MD Review: Open Pull Request…**    | —                 | Accepts a full PR URL or a bare PR number (see settings below).  |
-| **ADO MD Review: Refresh Threads**       | `Ctrl+Alt+R`      | Re-fetches threads on the active PR.                             |
-| **ADO MD Review: Add Comment to Selection** | `Ctrl+Alt+C`   | Focuses the comment input sidebar for the current selection.     |
-| **ADO MD Review: Refresh to Head Commit**| `F5`              | Re-opens the PR at the latest head commit.                       |
-| **ADO MD Review: Close Session**         | —                 | Clears the active PR session.                                    |
+| **Markdown PR Review: Open Pull Request…**    | —                 | Accepts a full PR URL or a bare PR number (see settings below).  |
+| **Markdown PR Review: Refresh Threads**       | `Ctrl+Alt+R`      | Re-fetches threads on the active PR.                             |
+| **Markdown PR Review: Add Comment to Selection** | `Ctrl+Alt+C`   | Focuses the comment input sidebar for the current selection.     |
+| **Markdown PR Review: Refresh to Head Commit**| `F5`              | Re-opens the PR at the latest head commit.                       |
+| **Markdown PR Review: Close Session**         | —                 | Clears the active PR session.                                    |
 
 Keybindings only fire when the rendered editor is focused
 (`activeCustomEditorId == 'adoMdReview.renderedView'`).
@@ -99,7 +99,7 @@ Keybindings only fire when the rendered editor is focused
 
 ## Settings
 
-All settings live under **ADO Markdown PR Reviewer** in VS Code
+All settings live under **Markdown PR Review** in VS Code
 **Settings**.
 
 | Setting                                | Default | Description                                                    |
