@@ -164,7 +164,14 @@ export class SessionManager {
             void this.handleRenderedViewMessage(uriKey, msg);
         });
 
-        panel.webview.html = renderedViewHtml({ csp, nonce, scriptUri: scriptUri.toString() });
+        panel.webview.html = renderedViewHtml({
+            csp,
+            nonce,
+            scriptUri: scriptUri.toString(),
+            codiconCssUri: panel.webview.asWebviewUri(
+                vscode.Uri.joinPath(this.context.extensionUri, 'out', 'codicons', 'codicon.css')
+            ).toString()
+        });
 
         // Kick off head + base fetches in parallel so the base fetch can
         // overlap network latency with the head fetch + initial render.
@@ -417,12 +424,13 @@ export class SessionManager {
     }
 }
 
-function renderedViewHtml(opts: { csp: string; nonce: string; scriptUri: string }): string {
+function renderedViewHtml(opts: { csp: string; nonce: string; scriptUri: string; codiconCssUri: string }): string {
     return /* html */ `<!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Security-Policy" content="${opts.csp}">
+    <link rel="stylesheet" href="${opts.codiconCssUri}">
     <title>Markdown PR Review</title>
     <style>
         body { font-family: var(--vscode-editor-font-family); margin: 0; padding: 0; }
@@ -436,19 +444,25 @@ function renderedViewHtml(opts: { csp: string; nonce: string; scriptUri: string 
         article#content blockquote { border-left: 3px solid var(--vscode-editorWidget-border); padding-left: 12px; opacity: 0.85; }
         .ado-thread-marker {
             display: inline-flex; align-items: center; justify-content: center;
-            margin-left: 6px; padding: 0 4px;
-            background: var(--vscode-badge-background, transparent);
-            color: var(--vscode-badge-foreground, inherit);
-            border: 1px solid var(--vscode-editorWidget-border);
-            border-radius: 10px;
-            cursor: pointer; font-size: 0.85em; line-height: 1.2;
+            margin-left: 6px; padding: 2px 4px;
+            background: transparent;
+            color: var(--vscode-icon-foreground, var(--vscode-foreground));
+            border: none;
+            cursor: pointer;
+            opacity: 0.7;
             vertical-align: baseline;
+            line-height: 1;
         }
+        .ado-thread-marker .codicon { font-size: 14px; }
+        .ado-thread-marker:hover { opacity: 1; }
         .ado-thread-marker[aria-expanded="true"] {
-            background: var(--vscode-list-activeSelectionBackground);
-            color: var(--vscode-list-activeSelectionForeground);
+            color: var(--vscode-textLink-foreground);
+            opacity: 1;
         }
-        .ado-thread-marker:focus { outline: 1px solid var(--vscode-focusBorder); }
+        .ado-thread-marker:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+            outline-offset: 1px;
+        }
         .ado-thread-popover {
             min-width: 260px; max-width: 480px; max-height: 60vh; overflow: auto;
             background: var(--vscode-editorHoverWidget-background);

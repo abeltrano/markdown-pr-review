@@ -9,6 +9,7 @@
 
 const esbuild = require('esbuild');
 const path = require('node:path');
+const fs = require('node:fs');
 
 const isProduction = process.argv.includes('--production');
 const isWatch = process.argv.includes('--watch');
@@ -49,6 +50,7 @@ const commentInputBuild = {
 };
 
 async function run() {
+  copyCodicons();
   const builds = [hostBuild, renderedViewBuild, commentInputBuild];
   if (isWatch) {
     const contexts = await Promise.all(builds.map(b => esbuild.context(b)));
@@ -58,6 +60,20 @@ async function run() {
     await Promise.all(builds.map(b => esbuild.build(b)));
     console.log(`[esbuild] built ${builds.length} bundles${isProduction ? ' (production)' : ''}.`);
   }
+}
+
+// Copy the codicon font + CSS from node_modules into out/codicons/ so the
+// rendered-view webview (whose localResourceRoots is out/) can load them.
+// We only need the .css + .ttf; the rest of @vscode/codicons (.svg, .html
+// gallery, etc.) stays out of the package.
+function copyCodicons() {
+  const srcDir = path.join('node_modules', '@vscode', 'codicons', 'dist');
+  const dstDir = path.join('out', 'codicons');
+  fs.mkdirSync(dstDir, { recursive: true });
+  for (const f of ['codicon.css', 'codicon.ttf']) {
+    fs.copyFileSync(path.join(srcDir, f), path.join(dstDir, f));
+  }
+  console.log('[esbuild] copied codicon.css + codicon.ttf to out/codicons/.');
 }
 
 run().catch(err => {

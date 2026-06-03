@@ -51,7 +51,10 @@ function makeMarker(thread: Thread): HTMLButtonElement {
     const marker = document.createElement('button');
     marker.className = 'ado-thread-marker';
     marker.type = 'button';
-    marker.textContent = '💬';
+    const icon = document.createElement('span');
+    icon.className = 'codicon codicon-comment-discussion';
+    icon.setAttribute('aria-hidden', 'true');
+    marker.appendChild(icon);
     marker.dataset.threadId = String(thread.id);
     const firstAuthor = thread.comments[0]?.author.displayName ?? '';
     const firstSnippet = (thread.comments[0]?.content ?? '').slice(0, 80);
