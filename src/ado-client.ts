@@ -1,0 +1,456 @@
+// SPDX-License-Identifier: MIT
+// ADO REST Client per design.md §3.2 + §4.1.1.
+//
+// Six endpoints:
+//   1. getPullRequest
+//   2. getChangedFiles
+//   3. getFileContent
+//   4. getThreads
+//   5. createThread
+//   6. getMergeBaseSha
+// Plus the helper resolveRepositoryId (name -> GUID).
+//
+// Error handling per §4.1.1 table:
+//   401 -> invalidate token, emit onTokenInvalid, throw (silent-retry in v0.4)
+//   403/404 -> throw with surfaced reason
+//   429 -> exponential backoff (1s, 2s, 4s + jitter, max 3 retries)
+//   5xx -> single retry after 2s
+//   Network -> throw "Cannot reach Azure DevOps"
+
+import {
+    AuthAcquisitionError,
+    VsCodeAuthManager,
+    type AuthManager
+} from './auth-manager';
+import { getLogger, redactAuthHeaders, type Logger } from './logger';
+import type {
+    ChangedFile,
+    LineOffset,
+    PullRequest,
+    PullRequestRef,
+    Thread
+} from './types';
+
+const API_VERSION = '7.1';
+
+export interface CreateThreadInput {
+    filePath: string;
+    rightFileStart: LineOffset;
+    rightFileEnd: LineOffset;
+    /** Full comment body (includes the auto-quote prefix from the controller). */
+    content: string;
+}
+
+export interface AdoClient {
+    getPullRequest(ref: PullRequestRef): Promise<PullRequest>;
+    getChangedFiles(ref: PullRequestRef, sha: string): Promise<ChangedFile[]>;
+    getFileContent(repoId: string, sha: string, path: string): Promise<string>;
+    getThreads(ref: PullRequestRef): Promise<Thread[]>;
+    createThread(ref: PullRequestRef, input: CreateThreadInput): Promise<Thread>;
+    getMergeBaseSha(ref: PullRequestRef): Promise<string>;
+    resolveRepositoryId(ref: PullRequestRef): Promise<string>;
+}
+
+export class AdoRestError extends Error {
+    constructor(
+        public readonly status: number,
+        public readonly endpoint: string,
+        public readonly responseBody: string,
+        message: string
+    ) {
+        super(message);
+        this.name = 'AdoRestError';
+    }
+}
+
+export class AdoNetworkError extends Error {
+    constructor(public readonly endpoint: string, cause: unknown) {
+        super(`Cannot reach Azure DevOps: ${cause instanceof Error ? cause.message : String(cause)}`);
+        this.name = 'AdoNetworkError';
+    }
+}
+
+export class HttpAdoClient implements AdoClient {
+    private readonly log: Logger;
+
+    constructor(
+        private readonly auth: AuthManager,
+        log?: Logger
+    ) {
+        this.log = log ?? getLogger('AdoClient');
+    }
+
+    async getPullRequest(ref: PullRequestRef): Promise<PullRequest> {
+        const repoId = await this.resolveRepositoryId(ref);
+        const url = this.buildUrl(
+            ref.organization,
+            `${encodeURIComponent(ref.project)}/_apis/git/repositories/${repoId}/pullRequests/${ref.pullRequestId}`,
+            { 'api-version': API_VERSION, includeWorkItemRefs: 'false' }
+        );
+        const raw = await this.requestJson<{
+            pullRequestId: number;
+            title: string;
+            sourceRefName: string;
+            targetRefName: string;
+            lastMergeSourceCommit?: { commitId: string };
+            status: string;
+        }>('GET', url);
+        return {
+            ref: { ...ref, repositoryId: repoId },
+            title: raw.title,
+            sourceRefName: raw.sourceRefName,
+            targetRefName: raw.targetRefName,
+            lastMergeSourceCommit: { commitId: raw.lastMergeSourceCommit?.commitId ?? '' },
+            status: (raw.status as PullRequest['status']) ?? 'active'
+        };
+    }
+
+    async getChangedFiles(ref: PullRequestRef, _sha: string): Promise<ChangedFile[]> {
+        // ADO returns changes per iteration. Fetch the latest iteration first,
+        // then its changes.
+        const repoId = await this.resolveRepositoryId(ref);
+        const iterUrl = this.buildUrl(
+            ref.organization,
+            `${encodeURIComponent(ref.project)}/_apis/git/repositories/${repoId}/pullRequests/${ref.pullRequestId}/iterations`,
+            { 'api-version': API_VERSION }
+        );
+        const iters = await this.requestJson<{
+            value: Array<{ id: number; createdDate: string }>;
+        }>('GET', iterUrl);
+        if (!iters.value || iters.value.length === 0) {
+            return [];
+        }
+        const latest = iters.value[iters.value.length - 1]!;
+        const changesUrl = this.buildUrl(
+            ref.organization,
+            `${encodeURIComponent(ref.project)}/_apis/git/repositories/${repoId}/pullRequests/${ref.pullRequestId}/iterations/${latest.id}/changes`,
+            { 'api-version': API_VERSION, '$top': '1000' }
+        );
+        const raw = await this.requestJson<{
+            changeEntries: Array<{
+                changeId?: number;
+                item?: { path?: string; isFolder?: boolean };
+                changeType?: string;
+            }>;
+        }>('GET', changesUrl);
+        const out: ChangedFile[] = [];
+        for (const entry of raw.changeEntries ?? []) {
+            const path = entry.item?.path;
+            if (!path || entry.item?.isFolder) {
+                continue;
+            }
+            const ct = (entry.changeType ?? 'edit').toLowerCase();
+            const changeType: ChangedFile['changeType'] =
+                ct.includes('add') ? 'add' :
+                ct.includes('delete') ? 'delete' :
+                ct.includes('rename') ? 'rename' : 'edit';
+            const lower = path.toLowerCase();
+            const isMarkdown =
+                lower.endsWith('.md') || lower.endsWith('.markdown') || lower.endsWith('.mdx');
+            out.push({ filePath: path, changeType, isMarkdown });
+        }
+        return out;
+    }
+
+    async getFileContent(repoId: string, sha: string, path: string): Promise<string> {
+        // Get raw file content at a specific commit.
+        const url = this.buildUrl(
+            /* org */ this.expectOrg(repoId),
+            // The org isn't on the repoId path-wise; callers must pass the
+            // PR ref's org. We adopted a 4-arg shape for clarity but this
+            // overload is awkward — replaced below by a single-org context
+            // tracked at the session level. Documented decision D-003.
+            `_apis/git/repositories/${repoId}/items`,
+            {
+                path,
+                'versionDescriptor.version': sha,
+                'versionDescriptor.versionType': 'commit',
+                'api-version': API_VERSION,
+                includeContent: 'true',
+                '$format': 'octetStream'
+            }
+        );
+        return await this.requestText('GET', url);
+    }
+
+    async getThreads(ref: PullRequestRef): Promise<Thread[]> {
+        const repoId = await this.resolveRepositoryId(ref);
+        const url = this.buildUrl(
+            ref.organization,
+            `${encodeURIComponent(ref.project)}/_apis/git/repositories/${repoId}/pullRequests/${ref.pullRequestId}/threads`,
+            { 'api-version': API_VERSION }
+        );
+        const raw = await this.requestJson<{ value: AdoRawThread[] }>('GET', url);
+        return (raw.value ?? []).map(toThread);
+    }
+
+    async createThread(ref: PullRequestRef, input: CreateThreadInput): Promise<Thread> {
+        const repoId = await this.resolveRepositoryId(ref);
+        const url = this.buildUrl(
+            ref.organization,
+            `${encodeURIComponent(ref.project)}/_apis/git/repositories/${repoId}/pullRequests/${ref.pullRequestId}/threads`,
+            { 'api-version': API_VERSION }
+        );
+        const body = {
+            comments: [
+                {
+                    parentCommentId: 0,
+                    content: input.content,
+                    commentType: 1     // 1 = text per design.md §4.1.1
+                }
+            ],
+            status: 1,                  // 1 = active
+            threadContext: {
+                filePath: input.filePath,
+                rightFileStart: input.rightFileStart,
+                rightFileEnd: input.rightFileEnd
+            }
+        };
+        const raw = await this.requestJson<AdoRawThread>('POST', url, body);
+        return toThread(raw);
+    }
+
+    async getMergeBaseSha(ref: PullRequestRef): Promise<string> {
+        const repoId = await this.resolveRepositoryId(ref);
+        const url = this.buildUrl(
+            ref.organization,
+            `${encodeURIComponent(ref.project)}/_apis/git/repositories/${repoId}/pullRequests/${ref.pullRequestId}/iterations`,
+            { 'api-version': API_VERSION }
+        );
+        const iters = await this.requestJson<{
+            value: Array<{ id: number; commonRefCommit?: { commitId?: string } }>;
+        }>('GET', url);
+        if (!iters.value || iters.value.length === 0) {
+            return '';
+        }
+        const latest = iters.value[iters.value.length - 1]!;
+        return latest.commonRefCommit?.commitId ?? '';
+    }
+
+    async resolveRepositoryId(ref: PullRequestRef): Promise<string> {
+        if (ref.repositoryId && /^[0-9a-fA-F-]{36}$/.test(ref.repositoryId)) {
+            return ref.repositoryId;
+        }
+        if (!ref.repositoryName) {
+            throw new Error('Repository id and name both missing — cannot resolve.');
+        }
+        const url = this.buildUrl(
+            ref.organization,
+            `${encodeURIComponent(ref.project)}/_apis/git/repositories/${encodeURIComponent(ref.repositoryName)}`,
+            { 'api-version': API_VERSION }
+        );
+        const raw = await this.requestJson<{ id: string }>('GET', url);
+        return raw.id;
+    }
+
+    // -------------------------------------------------------------------
+    // Internals
+    // -------------------------------------------------------------------
+
+    private buildUrl(
+        org: string,
+        path: string,
+        params: Record<string, string>
+    ): string {
+        const base = `https://dev.azure.com/${encodeURIComponent(org)}/`;
+        const url = new URL(path, base);
+        for (const [k, v] of Object.entries(params)) {
+            url.searchParams.set(k, v);
+        }
+        return url.toString();
+    }
+
+    private async requestJson<T>(method: string, url: string, body?: unknown): Promise<T> {
+        const text = await this.requestText(method, url, body);
+        if (!text) {
+            return {} as T;
+        }
+        try {
+            return JSON.parse(text) as T;
+        } catch (err) {
+            this.log.error('Failed to parse ADO response as JSON.', {
+                url,
+                method,
+                bodyPreview: text.slice(0, 200)
+            });
+            throw err;
+        }
+    }
+
+    private async requestText(method: string, url: string, body?: unknown): Promise<string> {
+        const maxAttempts = 4;     // 1 initial + 3 retries for 429
+        let attempt = 0;
+        let lastError: unknown;
+        while (attempt < maxAttempts) {
+            attempt++;
+            const token = await this.auth.getToken({ silent: true });
+            const authHeader = VsCodeAuthManager.buildAuthHeader(
+                token,
+                (this.auth as VsCodeAuthManager).currentMode ?? 'msal'
+            );
+            const headers: Record<string, string> = {
+                Authorization: authHeader,
+                Accept: 'application/json;api-version=' + API_VERSION + ', text/plain'
+            };
+            let serializedBody: string | undefined;
+            if (body !== undefined) {
+                headers['Content-Type'] = 'application/json';
+                serializedBody = JSON.stringify(body);
+            }
+            this.log.info(`${method} ${url}`, redactAuthHeaders({ attempt, method, url }));
+            let response: Response;
+            try {
+                response = await fetch(url, { method, headers, body: serializedBody });
+            } catch (err) {
+                lastError = err;
+                this.log.warn(`Network error on attempt ${attempt}.`, {
+                    url,
+                    method,
+                    error: err instanceof Error ? err.message : String(err)
+                });
+                if (attempt >= maxAttempts) {
+                    throw new AdoNetworkError(url, err);
+                }
+                await sleep(backoffMs(attempt));
+                continue;
+            }
+            if (response.ok) {
+                return await response.text();
+            }
+            const errorText = await safeReadText(response);
+            const safeBody = errorText.length > 1000 ? errorText.slice(0, 1000) + '...[truncated]' : errorText;
+            if (response.status === 401) {
+                (this.auth as VsCodeAuthManager).invalidateToken?.();
+                throw new AdoRestError(401, url, safeBody, 'Unauthorized — token may be invalid or scope rejected.');
+            }
+            if (response.status === 403) {
+                throw new AdoRestError(403, url, safeBody, 'Forbidden — your account may not have permission for this repository.');
+            }
+            if (response.status === 404) {
+                throw new AdoRestError(404, url, safeBody, 'Not found — check the PR URL or your access.');
+            }
+            if (response.status === 429 && attempt < maxAttempts) {
+                const retryAfterHeader = response.headers.get('Retry-After');
+                const wait = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) * 1000 : backoffMs(attempt);
+                this.log.warn(`429 rate-limited; backing off ${wait} ms.`, { attempt });
+                await sleep(wait);
+                continue;
+            }
+            if (response.status >= 500 && response.status < 600 && attempt === 1) {
+                this.log.warn(`5xx (${response.status}); single retry after 2s.`);
+                await sleep(2000);
+                continue;
+            }
+            throw new AdoRestError(
+                response.status,
+                url,
+                safeBody,
+                `ADO returned HTTP ${response.status}: ${response.statusText}`
+            );
+        }
+        // Loop fell through without returning — must be a network error retry exhaustion.
+        throw new AdoNetworkError(url, lastError ?? new Error('Exhausted retries'));
+    }
+
+    /**
+     * Org is not encoded in the bare repository id. This helper is a holdover
+     * from an earlier signature; the getFileContent path now expects the
+     * caller to thread org through via the session. Documented as D-003.
+     * For now we infer it from the most recent authoritative call (NOT YET
+     * — this is a temporary stub; real wiring goes through SessionManager
+     * which holds the active org).
+     */
+    private expectOrg(_repoId: string): string {
+        throw new Error('HttpAdoClient.getFileContent requires the caller to pass the org explicitly. Use getFileContentByRef instead.');
+    }
+
+    /** Replacement for getFileContent that takes a PullRequestRef directly. */
+    async getFileContentByRef(
+        ref: PullRequestRef,
+        sha: string,
+        path: string
+    ): Promise<string> {
+        const repoId = await this.resolveRepositoryId(ref);
+        const url = this.buildUrl(
+            ref.organization,
+            `${encodeURIComponent(ref.project)}/_apis/git/repositories/${repoId}/items`,
+            {
+                path,
+                'versionDescriptor.version': sha,
+                'versionDescriptor.versionType': 'commit',
+                'api-version': API_VERSION,
+                includeContent: 'true',
+                '$format': 'octetStream'
+            }
+        );
+        return await this.requestText('GET', url);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Wire helpers
+// ---------------------------------------------------------------------------
+
+interface AdoRawThread {
+    id: number;
+    status?: string;
+    publishedDate?: string;
+    comments?: Array<{
+        id: number;
+        author?: { displayName?: string; uniqueName?: string };
+        content?: string;
+        publishedDate?: string;
+        commentType?: string;
+    }>;
+    threadContext?: {
+        filePath?: string;
+        rightFileStart?: { line: number; offset: number };
+        rightFileEnd?: { line: number; offset: number };
+    };
+}
+
+function toThread(raw: AdoRawThread): Thread {
+    return {
+        id: raw.id,
+        status: (raw.status as Thread['status']) ?? 'unknown',
+        publishedDate: raw.publishedDate ?? '',
+        comments: (raw.comments ?? []).map(c => ({
+            id: c.id,
+            author: {
+                displayName: c.author?.displayName ?? '',
+                uniqueName: c.author?.uniqueName ?? ''
+            },
+            content: c.content ?? '',
+            publishedDate: c.publishedDate ?? '',
+            commentType: (c.commentType as 'text' | 'codeChange' | 'system') ?? 'text'
+        })),
+        threadContext: raw.threadContext
+            ? {
+                  filePath: raw.threadContext.filePath ?? '',
+                  rightFileStart: raw.threadContext.rightFileStart ?? null,
+                  rightFileEnd: raw.threadContext.rightFileEnd ?? null
+              }
+            : null
+    };
+}
+
+async function safeReadText(response: Response): Promise<string> {
+    try {
+        return await response.text();
+    } catch {
+        return '';
+    }
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function backoffMs(attempt: number): number {
+    const base = Math.pow(2, attempt - 1) * 1000;
+    const jitter = Math.floor(Math.random() * 500);
+    return base + jitter;
+}
+
+// Surface the AuthAcquisitionError so callers can pattern-match if needed.
+export { AuthAcquisitionError };
