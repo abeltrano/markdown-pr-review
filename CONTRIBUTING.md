@@ -149,14 +149,38 @@ ui(rendered): use codicon-comment-discussion for thread markers
 
 ## Pull requests
 
-1. Branch from `main`.
+`main` is protected: every change — even from the sole maintainer —
+lands via a pull request that must pass CI (`lint + build + test`)
+before merging. Direct pushes to `main` are not allowed for non-admin
+users; admins can bypass for emergencies.
+
+A typical change looks like:
+
+1. Branch from `main` (`git checkout -b feat/foo`).
 2. Make sure `npm run lint && npm run build && npm test` all pass
    locally before opening the PR.
-3. Update [**`CHANGELOG.md`**](CHANGELOG.md) under the
-   `## [Unreleased]` heading.
-4. Fill in the PR template; include a screenshot or short GIF for any
-   user-visible change.
-5. CI must be green before review.
+3. Update [`CHANGELOG.md`](CHANGELOG.md) under the `## [Unreleased]`
+   heading.
+4. Commit using [Conventional Commits](#commits).
+5. Run the PR helper:
+
+   ```powershell
+   ./scripts/new-pr.ps1
+   ```
+
+   This pushes the branch, creates a PR via `gh pr create --fill`
+   (title and body come from the last commit), and enables squash
+   auto-merge so the PR lands the moment CI is green. Pass `-Draft`
+   to skip auto-merge.
+6. After the PR auto-merges, refresh `main`:
+
+   ```bash
+   git checkout main && git pull && git branch -D <feature-branch>
+   ```
+
+Conversation threads opened on a PR must be resolved before the PR
+can merge. Squash-merging is the only enabled merge strategy, so
+each PR becomes a single Conventional-Commit-style entry on `main`.
 
 ## Security
 
