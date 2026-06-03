@@ -10,6 +10,15 @@ node_modules/**
 esbuild.js
 tsconfig.json
 *.tsbuildinfo
-*.map
+# Source maps roughly double the package size and ship the original
+# TypeScript. Use ** so nested out/**/*.map files match too.
+**/*.map
 .eslintrc*
 .editorconfig
+
+# Mocha test config — not loaded at runtime.
+.mocharc.cjs
+
+# Marketplace icon regeneration source. The PNG is the wired asset;
+# the SVG lives in source control for regeneration but doesn't ship.
+media/marketplace.svg
