@@ -2,6 +2,13 @@
 // Centralized logger with mandatory auth-header / bearer-token redaction.
 // All log writes MUST funnel through redactAuthHeaders() to satisfy
 // REQ-ERR-001 AC-3 and REQ-NFR-SEC-001.
+//
+// The output channel is created with the built-in 'log' languageId so
+// VS Code applies its log grammar — timestamps render muted, level
+// keywords (info/warn/error) get themed colors, bracketed source names
+// get another color — matching the appearance of channels like
+// "GitHub Pull Requests". The on-the-wire line format is:
+//   2026-06-03T07:25:25.959Z [info] [Component] message {...context}
 
 import * as vscode from 'vscode';
 import {
@@ -14,6 +21,7 @@ import {
 export { redactAuthHeaders } from './redact';
 
 const CHANNEL_NAME = 'Markdown PR Review';
+const CHANNEL_LANGUAGE_ID = 'log';
 
 export type LogLevel = 'info' | 'warn' | 'error';
 
@@ -33,7 +41,7 @@ export class OutputChannelLogger implements Logger {
 
     constructor(component: string, channel?: vscode.OutputChannel) {
         this.component = component;
-        this.channel = channel ?? vscode.window.createOutputChannel(CHANNEL_NAME);
+        this.channel = channel ?? vscode.window.createOutputChannel(CHANNEL_NAME, CHANNEL_LANGUAGE_ID);
     }
 
     info(message: string, context?: unknown): void {
@@ -60,7 +68,10 @@ export class OutputChannelLogger implements Logger {
     private write(level: LogLevel, message: string, context?: unknown): void {
         const timestamp = new Date().toISOString();
         const safeMessage = redactJwtsAndUrlTokens(String(message));
-        let line = `[${timestamp}] [${level.toUpperCase()}] [${this.component}] ${safeMessage}`;
+        // Format matches the 'log' grammar's expectations: bare ISO
+        // timestamp at line start, lowercase level in brackets, bracketed
+        // source, then message. Tokens get colored by the grammar.
+        let line = `${timestamp} [${level}] [${this.component}] ${safeMessage}`;
         if (context !== undefined) {
             const safeContext = redactAuthHeaders(context);
             try {
@@ -78,7 +89,7 @@ let sharedChannel: vscode.OutputChannel | undefined;
 /** Returns a logger sharing the singleton output channel. Test-friendly. */
 export function getLogger(component: string): Logger {
     if (!sharedChannel) {
-        sharedChannel = vscode.window.createOutputChannel(CHANNEL_NAME);
+        sharedChannel = vscode.window.createOutputChannel(CHANNEL_NAME, CHANNEL_LANGUAGE_ID);
     }
     return new OutputChannelLogger(component, sharedChannel);
 }
