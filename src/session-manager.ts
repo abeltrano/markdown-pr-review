@@ -661,7 +661,7 @@ function renderedViewHtml(opts: {
         .ado-thread-popover__body {
             white-space: pre-wrap; word-wrap: break-word;
         }
-        /* Diff gutter bars (TASK-031 / REQ-DIFF-001). */
+        /* Diff gutter bars (REQ-DIFF-001). */
         article#content [data-source-line-start] { position: relative; }
         article#content [data-diff-state="added"] {
             border-left: 3px solid var(--vscode-diffEditor-insertedTextBackground, #2cbe4e);

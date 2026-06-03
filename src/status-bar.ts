@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Status Bar Controller per design.md §3.2 (TASK-033 / REQ-UX-001).
+// Status Bar Controller per design.md §3.2 (REQ-UX-001).
 //
 // Shows the current PR + active rendered-view file in the bottom-left
 // status bar. Clicking the item focuses the rendered view. The item is

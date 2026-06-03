@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// VS Code-side error surfacing (TASK-036 / REQ-ERR-001, REQ-ERR-003).
+// VS Code-side error surfacing (REQ-ERR-001, REQ-ERR-003).
 //
 // Every user-facing error has a stable error code so users can grep the
 // Output channel. Surfacing always offers the "Open Output" action so the

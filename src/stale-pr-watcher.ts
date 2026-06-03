@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Stale-PR Watcher per design.md §3.2 (TASK-034 / REQ-ERR-002).
+// Stale-PR Watcher per design.md §3.2 (REQ-ERR-002).
 //
 // Polls the PR's head commit every N seconds. When the head advances
 // past `session.headSha` we post a `staleCommit` message to every open

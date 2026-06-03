@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Lazy mermaid loader. Mermaid is bundled INTO the rendered-view IIFE
-// (decision D-011) via dynamic import so we don't need a separate <script>
+// via dynamic import so we don't need a separate <script>
 // tag at runtime.
 
 let mermaidModule: typeof import('mermaid') | undefined;

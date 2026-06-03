@@ -73,8 +73,7 @@ describe('renderer pipeline', () => {
     describe('TC-032 — html_block handling under html:false (safer default)', () => {
         // The renderer is configured with `html: false` so block-level raw
         // HTML is rendered as escaped text inside a paragraph, NOT as an
-        // html_block token. This is the safer default (TC-033) and the
-        // trade-off is documented in docs/decisions.md (D-016).
+        // html_block token. This is the safer default (TC-033).
         it('block-level raw HTML is rendered as escaped text, not executed', () => {
             const md = '<details><summary>x</summary>body</details>\n';
             const { html } = render({ markdown: md });

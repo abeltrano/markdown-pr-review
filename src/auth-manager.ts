@@ -4,7 +4,7 @@
 // Obtains and silently refreshes an ADO-scoped access token via
 // `vscode.authentication.getSession('microsoft', ...)`. Emits
 // `onTokenInvalid` so the ADO Client can react to 401s; the actual
-// silent-retry path is wired in v0.4 (TASK-035).
+// silent-retry path is wired in v0.4.
 //
 // Scope is the ADO resource GUID's `.default` scope per ASM-006.
 // If the Microsoft auth provider rejects that scope at runtime we
@@ -18,7 +18,7 @@ import { getLogger, type Logger } from './logger';
 const ADO_RESOURCE_ID = '499b84ac-1321-427f-aa17-267ca6975798';
 const ADO_DEFAULT_SCOPE = `${ADO_RESOURCE_ID}/.default`;
 
-// Secret storage key for PAT fallback (TASK-007 RISK-003 mitigation).
+// Secret storage key for PAT fallback (RISK-003 mitigation).
 const PAT_SECRET_KEY = 'markdownPrReview.pat';
 
 export interface AuthManager {

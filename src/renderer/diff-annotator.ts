@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Diff Annotator (TASK-030 / REQ-DIFF-001).
+// Diff Annotator (REQ-DIFF-001).
 //
 // Strategy:
 //   1. Tokenize each version's markdown via the shared markdown-it

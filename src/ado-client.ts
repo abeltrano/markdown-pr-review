@@ -157,7 +157,7 @@ export class HttpAdoClient implements AdoClient {
             // The org isn't on the repoId path-wise; callers must pass the
             // PR ref's org. We adopted a 4-arg shape for clarity but this
             // overload is awkward — replaced below by a single-org context
-            // tracked at the session level. Documented decision D-003.
+            // tracked at the session level.
             `_apis/git/repositories/${repoId}/items`,
             {
                 path,
@@ -279,7 +279,7 @@ export class HttpAdoClient implements AdoClient {
         const maxAttempts = 4;     // 1 initial + 3 retries for 429
         let attempt = 0;
         let lastError: unknown;
-        let auth401Retries = 0;     // TASK-035: cap at 1 interactive retry per request
+        let auth401Retries = 0;     // cap at 1 interactive retry per request
         while (attempt < maxAttempts) {
             attempt++;
             let token: string;
@@ -389,7 +389,7 @@ export class HttpAdoClient implements AdoClient {
             const safeBody = bodyText.length > 1000 ? bodyText.slice(0, 1000) + '...[truncated]' : bodyText;
             if (response.status === 401) {
                 (this.auth as VsCodeAuthManager).invalidateToken?.();
-                // TASK-035 / REQ-AUTH-002 AC-2: silent retry once. On the second
+                // REQ-AUTH-002 AC-2: silent retry once. On the second
                 // 401, surface the error to the user. The retry uses
                 // silent:false so the auth provider can prompt for fresh
                 // credentials (modal MSAL dialog or PAT entry).
@@ -433,7 +433,7 @@ export class HttpAdoClient implements AdoClient {
     /**
      * Org is not encoded in the bare repository id. This helper is a holdover
      * from an earlier signature; the getFileContent path now expects the
-     * caller to thread org through via the session. Documented as D-003.
+     * caller to thread org through via the session.
      * For now we infer it from the most recent authoritative call (NOT YET
      * — this is a temporary stub; real wiring goes through SessionManager
      * which holds the active org).

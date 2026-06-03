@@ -222,9 +222,7 @@ intrusive, or use the **Close Session** command to stop polling.
 ├── docs/
 │   ├── requirements.md           # REQ-IDs (source of truth)
 │   ├── design.md                 # Architecture, components, contracts
-│   ├── validation-plan.md        # Test cases TC-001…TC-165
-│   ├── implementation-plan.md    # Phased task breakdown TASK-001…TASK-040
-│   └── decisions.md              # Decisions log (D-001…D-028)
+│   └── validation-plan.md        # Test cases TC-001…TC-165
 ├── src/                          # Extension host code
 └── test/unit/                    # Mocha unit tests (90 currently)
 ```
