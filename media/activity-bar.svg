@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+     fill="none" stroke="currentColor" stroke-width="1.5"
+     stroke-linecap="round" stroke-linejoin="round">
+  <!-- Speech bubble with tail at bottom-left -->
+  <path d="M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-9l-4 3v-3H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+  <!-- "M" glyph inside -->
+  <path d="M6 14V8l2.5 3 2.5-3v6" />
+  <!-- "↓" glyph inside (arrow down) -->
+  <path d="M15 8v6" />
+  <path d="M13 12l2 2 2-2" />
+</svg>

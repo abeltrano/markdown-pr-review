@@ -6,6 +6,7 @@
   "publisher": "anbeltra",
   "private": true,
   "license": "MIT",
+  "icon": "media/marketplace.png",
   "engines": {
     "vscode": "^1.85.0",
     "node": ">=20"
@@ -73,7 +74,7 @@
         {
           "id": "adoMdReview",
           "title": "Markdown PR Review",
-          "icon": "$(comment-discussion)"
+          "icon": "media/activity-bar.svg"
         }
       ]
     },
