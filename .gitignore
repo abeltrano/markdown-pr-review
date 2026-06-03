@@ -1,0 +1,28 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# TypeScript build output
+out/
+dist/
+*.tsbuildinfo
+
+# VS Code extension test runner
+.vscode-test/
+.vscode-test-web/
+
+# VSIX packages
+*.vsix
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+*.code-workspace
+
+# Local env / secrets
+.env
+.env.local
+*.local
