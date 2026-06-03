@@ -26,6 +26,7 @@
       {
         "command": "markdownPrReview.openPullRequest",
         "title": "Open Pull Request…",
+        "shortTitle": "Open PR",
         "category": "Markdown PR Review"
       },
       {
