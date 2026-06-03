@@ -184,10 +184,23 @@ export class SessionManager {
                 diffAnnotations: [],
                 protocolVersion: 1
             };
-            await panel.webview.postMessage({
+            const initPostStartedAt = Date.now();
+            const postInitPromise = Promise.resolve(panel.webview.postMessage({
                 type: 'init',
                 payload: initPayload
-            } satisfies HostToRenderedView);
+            } satisfies HostToRenderedView));
+            postInitPromise.then(
+                (ok) => this.log.info('Init postMessage settled.', {
+                    filePath,
+                    ms: Date.now() - initPostStartedAt,
+                    delivered: ok
+                }),
+                (err) => this.log.error('Init postMessage rejected.', {
+                    filePath,
+                    ms: Date.now() - initPostStartedAt,
+                    error: err instanceof Error ? err.message : String(err)
+                })
+            );
             this.log.info('Init posted to webview.', { filePath });
 
             // Phase 2: once the base markdown is available, compute diff
@@ -204,14 +217,27 @@ export class SessionManager {
                 return;
             }
             const diffRender = renderMarkdown({ markdown: headMarkdown, diffAnnotations });
-            await panel.webview.postMessage({
+            const diffPostStartedAt = Date.now();
+            const postDiffPromise = Promise.resolve(panel.webview.postMessage({
                 type: 'diffApplied',
                 payload: {
                     html: diffRender.html,
                     sourceMap: diffRender.sourceMap,
                     diffAnnotations
                 }
-            } satisfies HostToRenderedView);
+            } satisfies HostToRenderedView));
+            postDiffPromise.then(
+                (ok) => this.log.info('Diff postMessage settled.', {
+                    filePath,
+                    ms: Date.now() - diffPostStartedAt,
+                    delivered: ok
+                }),
+                (err) => this.log.error('Diff postMessage rejected.', {
+                    filePath,
+                    ms: Date.now() - diffPostStartedAt,
+                    error: err instanceof Error ? err.message : String(err)
+                })
+            );
             this.log.info('Diff applied to webview.', {
                 filePath,
                 annotations: diffAnnotations.length
@@ -233,7 +259,7 @@ export class SessionManager {
     private async handleRenderedViewMessage(uriStr: string, msg: RenderedViewToHost): Promise<void> {
         switch (msg.type) {
             case 'ready':
-                // No-op: init was already posted by attachRenderedView.
+                this.log.info('Webview ready signal received.', { uri: uriStr });
                 break;
             case 'selectionMade':
                 if (!this.commentController) return;
