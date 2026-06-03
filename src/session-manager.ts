@@ -16,6 +16,7 @@ import { render as renderMarkdown } from './renderer';
 import { annotateBlockDiff } from './renderer/diff-annotator';
 import { parseAdoprUri } from './adopr-uri';
 import { buildRenderedViewCsp, generateNonce } from './views/csp';
+import { surfaceError, toErrorPayload } from './error-utils';
 import type { AuthManager } from './auth-manager';
 import type {
     HostToRenderedView,
@@ -53,6 +54,11 @@ export class SessionManager {
 
     getActiveSession(): Session | null {
         return this.activeSession;
+    }
+
+    /** Internal accessor — used by infrastructure that needs to make REST calls. */
+    getAdoClient(): AdoClient {
+        return this.adoClient;
     }
 
     async openPullRequest(ref: PullRequestRef): Promise<void> {
@@ -129,9 +135,18 @@ export class SessionManager {
             void this.handleRenderedViewMessage(uri.toString(), msg);
         });
 
-        // Once the webview signals ready, push `init`.
-        const initPayload = await this.buildInitPayload(filePath);
-        await panel.webview.postMessage({ type: 'init', payload: initPayload } satisfies HostToRenderedView);
+        try {
+            const initPayload = await this.buildInitPayload(filePath);
+            await panel.webview.postMessage({ type: 'init', payload: initPayload } satisfies HostToRenderedView);
+        } catch (err) {
+            this.log.error('Failed to build init payload', {
+                filePath,
+                error: err instanceof Error ? err.message : String(err)
+            });
+            const payload = toErrorPayload(err);
+            void panel.webview.postMessage({ type: 'error', payload } satisfies HostToRenderedView);
+            void surfaceError(err, `Open ${filePath}`);
+        }
     }
 
     private async buildInitPayload(filePath: string): Promise<RenderedViewInitPayload> {
@@ -191,7 +206,15 @@ export class SessionManager {
                 await this.refreshThreads();
                 break;
             case 'refreshToHead':
-                this.log.info('Refresh-to-head requested; not yet implemented in v0.1.');
+                this.log.info('Refresh-to-head requested.');
+                try {
+                    const session = this.activeSession;
+                    if (session) {
+                        await this.openPullRequest(session.pr.ref);
+                    }
+                } catch (err) {
+                    await surfaceError(err, 'Refresh to head');
+                }
                 break;
             case 'log':
                 this.log[msg.payload.level](msg.payload.message, msg.payload.context);

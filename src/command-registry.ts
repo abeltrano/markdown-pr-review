@@ -8,6 +8,7 @@ import { parsePullRequestInput } from './pr-url-parser';
 import type { SessionManager } from './session-manager';
 import type { AdoSettings } from './types';
 import type { CommentInputViewProvider } from './comment-input-view-provider';
+import { ERROR_CODES, surfaceError } from './error-utils';
 
 const COMMAND_IDS = {
     openPR: 'adoMdReview.openPullRequest',
@@ -42,8 +43,11 @@ export function registerCommands(
                 const parsed = parsePullRequestInput(input, settings);
                 if (!parsed.ok) {
                     void vscode.window.showErrorMessage(
-                        `Could not parse PR input (${parsed.error.code}): ${parsed.error.message}`
-                    );
+                        `Open PR failed (${ERROR_CODES.PR_PARSE}/${parsed.error.code}): ${parsed.error.message}`,
+                        'Open Output'
+                    ).then((choice) => {
+                        if (choice === 'Open Output') log.channel.show(true);
+                    });
                     return;
                 }
                 await sessionManager.openPullRequest(parsed.value);
@@ -51,9 +55,7 @@ export function registerCommands(
                     `Loaded PR #${parsed.value.pullRequestId} from ${parsed.value.organization}/${parsed.value.project}.`
                 );
             } catch (err) {
-                const msg = err instanceof Error ? err.message : String(err);
-                log.error('openPullRequest failed', msg);
-                void vscode.window.showErrorMessage(`Open PR failed: ${msg}`);
+                await surfaceError(err, 'Open PR');
             }
         }),
 
@@ -62,7 +64,7 @@ export function registerCommands(
                 await sessionManager.refreshThreads();
                 void vscode.window.showInformationMessage('Threads refreshed.');
             } catch (err) {
-                void vscode.window.showErrorMessage(`Refresh failed: ${String(err)}`);
+                await surfaceError(err, 'Refresh threads');
             }
         }),
 
@@ -77,9 +79,17 @@ export function registerCommands(
         }),
 
         vscode.commands.registerCommand(COMMAND_IDS.refreshToHead, async () => {
-            // v0.1 stub — full implementation in v0.4 (TASK-034).
-            log.info('Refresh-to-head requested; close + reopen PR to refresh.');
-            void vscode.window.showInformationMessage('Refresh to head: close + reopen the PR in v0.1.');
+            try {
+                const session = sessionManager.getActiveSession();
+                if (!session) {
+                    void vscode.window.showInformationMessage('No active PR session to refresh.');
+                    return;
+                }
+                await sessionManager.openPullRequest(session.pr.ref);
+                void vscode.window.showInformationMessage('Reopened at latest head.');
+            } catch (err) {
+                await surfaceError(err, 'Refresh to head');
+            }
         }),
 
         vscode.commands.registerCommand(COMMAND_IDS.closeSession, async () => {

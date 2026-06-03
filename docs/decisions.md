@@ -394,3 +394,92 @@ rationale, and links back to the relevant requirement / open question.
   the REST layer where it belongs.
 - **REQ/OQ**: REQ-DIFF-002 AC-2.
 
+
+---
+
+## D-024 (2026-06-03 01:10 PT) — Status Bar item placement and tooltip
+
+- **Context**: TASK-033. Design.md says ``$(comment-discussion) MD Review: PR ${prId} — ${fileName}``.
+- **Decision**: Place at ``StatusBarAlignment.Left`` priority 100,
+  tooltip "Click to focus the ADO MD Review rendered editor".
+  When threads > 0, append " ( N thread(s))" so reviewers can see at
+  a glance whether anyone has chimed in. The click action opens the
+  first ``adopr://`` URI registered in the session's ``openedEditors``.
+- **Rationale**: Left side keeps it associated with file/session state
+  (right side is typically for diagnostics counts). Showing thread
+  count repurposes the existing event flow without adding a separate
+  poll.
+- **REQ/OQ**: REQ-UX-001.
+
+---
+
+## D-025 (2026-06-03 01:15 PT) — Stale-PR Watcher uses setInterval, not setTimeout chain
+
+- **Context**: TASK-034. Choice between ``setInterval`` and recursive
+  ``setTimeout`` for the poll loop.
+- **Decision**: Use ``setInterval`` with a fixed interval pulled from
+  ``adoMdReview.staleCommitPollSeconds`` (clamped to [15, 60]).
+  Failures don't extend the interval; we log a warn after 3
+  consecutive failures and keep polling.
+- **Rationale**: setInterval is simpler to reason about and to stop
+  reliably (single ``clearInterval`` handle). A recursive timeout
+  chain risks orphaning a pending timer on dispose if the chain races.
+  Configuration changes take effect on the next ``start()`` call (i.e.,
+  when a new PR session opens), which is acceptable since users
+  changing this setting will normally restart the session anyway.
+- **REQ/OQ**: REQ-ERR-002.
+
+---
+
+## D-026 (2026-06-03 01:20 PT) — 401 silent retry uses a per-request flag
+
+- **Context**: TASK-035. REQ-AUTH-002 AC-2 demands at most one auth
+  prompt per user request.
+- **Decision**: Track ``auth401Retries`` as a local counter inside
+  ``requestText``. First 401 calls ``invalidateToken()`` and retries
+  with ``silent: false``; second 401 throws. The retry does NOT count
+  toward the existing 429-attempt budget (``attempt--`` after a 401
+  retry) so a single network-flapping window doesn't masquerade as a
+  401 storm.
+- **Rationale**: Keeps the retry state per-request, which matches the
+  user-visible expectation (one click means at most one auth prompt).
+  Putting the counter at the client level would deadlock if two
+  parallel requests both 401'd.
+- **REQ/OQ**: REQ-AUTH-002 AC-2.
+
+---
+
+## D-027 (2026-06-03 01:25 PT) — Error classification extracted from error-utils
+
+- **Context**: TASK-036. error-utils.ts originally combined
+  ``classifyError`` (pure) with ``surfaceError`` (vscode-dependent).
+  Unit tests can't import the combined module because the test
+  runtime has no ``vscode`` module.
+- **Decision**: Mirror the redact.ts split: pure classification +
+  payload helpers live in ``src/error-classification.ts``; the vscode
+  surfacing wrapper lives in ``src/error-utils.ts``. error-utils
+  re-exports the pure helpers so existing callers don't break.
+  ``AdoRestError`` / ``AdoNetworkError`` extracted similarly to a new
+  ``src/ado-errors.ts`` (re-exported from ado-client to keep
+  back-compat).
+- **Rationale**: Same rationale as D-018 — keeping pure logic in a
+  vscode-free module is the lowest-friction way to unit-test it in
+  mocha. The marginal cost (two extra files) is far smaller than the
+  cost of jumping to ``@vscode/test-electron`` for these tests.
+- **REQ/OQ**: REQ-ERR-001, links D-018.
+
+---
+
+## D-028 (2026-06-03 01:30 PT) — Settings use markdownDescription with setting links
+
+- **Context**: TASK-037. settings UI polish.
+- **Decision**: Convert all three configuration entries to
+  ``markdownDescription`` and reference cross-settings via the
+  ``#adoMdReview.X#`` pattern that VS Code resolves to clickable
+  links in the Settings UI. Add concrete examples in every entry.
+- **Rationale**: Improves discoverability for users who land on a
+  single setting without the context of the others (e.g.,
+  ``defaultProject`` is only useful if ``defaultOrganization`` is
+  also set; the cross-link makes that explicit).
+- **REQ/OQ**: REQ-UX-002.
+

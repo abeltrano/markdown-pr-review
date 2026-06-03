@@ -23,6 +23,7 @@ import {
     type AuthManager
 } from './auth-manager';
 import { getLogger, redactAuthHeaders, type Logger } from './logger';
+import { AdoNetworkError, AdoRestError } from './ado-errors';
 import type {
     ChangedFile,
     LineOffset,
@@ -59,24 +60,8 @@ export interface AdoClient {
     resolveRepositoryId(ref: PullRequestRef): Promise<string>;
 }
 
-export class AdoRestError extends Error {
-    constructor(
-        public readonly status: number,
-        public readonly endpoint: string,
-        public readonly responseBody: string,
-        message: string
-    ) {
-        super(message);
-        this.name = 'AdoRestError';
-    }
-}
-
-export class AdoNetworkError extends Error {
-    constructor(public readonly endpoint: string, cause: unknown) {
-        super(`Cannot reach Azure DevOps: ${cause instanceof Error ? cause.message : String(cause)}`);
-        this.name = 'AdoNetworkError';
-    }
-}
+// Re-export ADO error classes for callers that import from this module.
+export { AdoRestError, AdoNetworkError };
 
 export class HttpAdoClient implements AdoClient {
     private readonly log: Logger;
@@ -289,9 +274,10 @@ export class HttpAdoClient implements AdoClient {
         const maxAttempts = 4;     // 1 initial + 3 retries for 429
         let attempt = 0;
         let lastError: unknown;
+        let auth401Retries = 0;     // TASK-035: cap at 1 interactive retry per request
         while (attempt < maxAttempts) {
             attempt++;
-            const token = await this.auth.getToken({ silent: true });
+            const token = await this.auth.getToken({ silent: auth401Retries === 0 });
             const authHeader = VsCodeAuthManager.buildAuthHeader(
                 token,
                 (this.auth as VsCodeAuthManager).currentMode ?? 'msal'
@@ -329,6 +315,16 @@ export class HttpAdoClient implements AdoClient {
             const safeBody = errorText.length > 1000 ? errorText.slice(0, 1000) + '...[truncated]' : errorText;
             if (response.status === 401) {
                 (this.auth as VsCodeAuthManager).invalidateToken?.();
+                // TASK-035 / REQ-AUTH-002 AC-2: silent retry once. On the second
+                // 401, surface the error to the user. The retry uses
+                // silent:false so the auth provider can prompt for fresh
+                // credentials (modal MSAL dialog or PAT entry).
+                if (auth401Retries === 0) {
+                    auth401Retries++;
+                    attempt--; // not counted toward 429/network attempts
+                    this.log.warn('401 received; retrying once with interactive auth.', { url });
+                    continue;
+                }
                 throw new AdoRestError(401, url, safeBody, 'Unauthorized — token may be invalid or scope rejected.');
             }
             if (response.status === 403) {

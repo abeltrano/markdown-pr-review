@@ -130,19 +130,19 @@
         "adoMdReview.defaultOrganization": {
           "type": "string",
           "default": "",
-          "description": "Default Azure DevOps organization (used for bare-PR-id input)."
+          "markdownDescription": "Default Azure DevOps organization. When set together with `#adoMdReview.defaultProject#`, the **Open Pull Request** command will accept a bare PR number (e.g., `12345`) in addition to full URLs.\n\nExample: `contoso` (from `https://dev.azure.com/contoso/...`)."
         },
         "adoMdReview.defaultProject": {
           "type": "string",
           "default": "",
-          "description": "Default Azure DevOps project (used for bare-PR-id input)."
+          "markdownDescription": "Default Azure DevOps project. Must be set together with `#adoMdReview.defaultOrganization#` for bare-PR-id input to work.\n\nExample: `MyProject`."
         },
         "adoMdReview.staleCommitPollSeconds": {
           "type": "number",
           "default": 30,
           "minimum": 15,
           "maximum": 60,
-          "description": "How often to check for a newer head commit on the active PR (seconds)."
+          "markdownDescription": "How often (in seconds) to check whether a newer head commit has been pushed to the active PR. Range 15–60. When a newer commit is detected, a banner appears in the rendered view offering to refresh."
         }
       }
     }
