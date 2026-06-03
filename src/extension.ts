@@ -21,7 +21,9 @@ import { parseAdoprUri } from './adopr-uri';
 
 export function activate(context: vscode.ExtensionContext): void {
     const log = getLogger('Extension');
-    log.info('Activating ADO Markdown PR Reviewer.');
+    const version =
+        (context.extension?.packageJSON?.version as string | undefined) ?? 'unknown';
+    log.info(`Activating ADO Markdown PR Reviewer v${version}.`);
 
     const auth = new VsCodeAuthManager(context);
     const sessionManager = new SessionManager(context, auth);

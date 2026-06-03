@@ -425,6 +425,10 @@ export class HttpAdoClient implements AdoClient {
         path: string
     ): Promise<string> {
         const repoId = await this.resolveRepositoryId(ref);
+        // Use the JSON-envelope form of /items (no $format=octetStream).
+        // On large ADO mono-repos like microsoft/OS the octetStream variant
+        // returns headers immediately but stalls mid-stream; the JSON form
+        // is served from a different code path and completes reliably.
         const url = this.buildUrl(
             ref.organization,
             `${encodeURIComponent(ref.project)}/_apis/git/repositories/${repoId}/items`,
@@ -433,11 +437,11 @@ export class HttpAdoClient implements AdoClient {
                 'versionDescriptor.version': sha,
                 'versionDescriptor.versionType': 'commit',
                 'api-version': API_VERSION,
-                includeContent: 'true',
-                '$format': 'octetStream'
+                includeContent: 'true'
             }
         );
-        return await this.requestText('GET', url);
+        const raw = await this.requestJson<{ content?: string }>('GET', url);
+        return raw.content ?? '';
     }
 
     /**
