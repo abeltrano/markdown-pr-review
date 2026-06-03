@@ -1,0 +1,63 @@
+{
+  "name": "ado-markdown-pr-reviewer",
+  "displayName": "ADO Markdown PR Reviewer",
+  "description": "Review Azure DevOps PR markdown files in a rendered view and post comments anchored to raw line ranges.",
+  "version": "0.1.0",
+  "publisher": "anbeltra",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=20"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "adoMdReview.openPullRequest",
+        "title": "ADO MD Review: Open Pull Request"
+      },
+      {
+        "command": "adoMdReview.focusRenderedView",
+        "title": "ADO MD Review: Focus Rendered View"
+      },
+      {
+        "command": "adoMdReview.focusCommentInput",
+        "title": "ADO MD Review: Focus Comment Input"
+      },
+      {
+        "command": "adoMdReview.refreshThreads",
+        "title": "ADO MD Review: Refresh Threads"
+      },
+      {
+        "command": "adoMdReview.commentOnSelection",
+        "title": "ADO MD Review: Comment on Selection"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc --noEmit && node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "build": "tsc --noEmit && node esbuild.js --production",
+    "package": "npm run build && vsce package --no-yarn",
+    "test": "npm run compile && node ./out/test/runTests.js",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.32.0",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "diff": "^5.2.0",
+    "markdown-it": "^14.1.0",
+    "mermaid": "^10.9.1"
+  }
+}

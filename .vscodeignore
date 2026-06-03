@@ -1,0 +1,15 @@
+# Source not shipped in the .vsix
+src/**
+test/**
+docs/**
+node_modules/**
+.vscode/**
+.vscode-test/**
+.git/**
+.gitignore
+esbuild.js
+tsconfig.json
+*.tsbuildinfo
+*.map
+.eslintrc*
+.editorconfig
