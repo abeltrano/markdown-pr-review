@@ -24,28 +24,28 @@
     "commands": [
       {
         "command": "adoMdReview.openPullRequest",
-        "title": "ADO MD Review: Open Pull Request…",
+        "title": "Open Pull Request…",
         "category": "ADO MD Review"
       },
       {
         "command": "adoMdReview.refreshThreads",
-        "title": "ADO MD Review: Refresh Threads",
+        "title": "Refresh Threads",
         "category": "ADO MD Review",
         "icon": "$(refresh)"
       },
       {
         "command": "adoMdReview.addComment",
-        "title": "ADO MD Review: Add Comment to Selection",
+        "title": "Add Comment to Selection",
         "category": "ADO MD Review"
       },
       {
         "command": "adoMdReview.refreshToHead",
-        "title": "ADO MD Review: Refresh to Head Commit",
+        "title": "Refresh to Head Commit",
         "category": "ADO MD Review"
       },
       {
         "command": "adoMdReview.closeSession",
-        "title": "ADO MD Review: Close Session",
+        "title": "Close Session",
         "category": "ADO MD Review"
       }
     ],
