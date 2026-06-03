@@ -40,6 +40,14 @@ export class SessionManager {
     private commentController: CommentController | null = null;
     private inputView: CommentInputViewProvider | null = null;
     private disposables: vscode.Disposable[] = [];
+    // Per-webview ready signal: resolves when the webview's script has
+    // attached its `message` listener and posted `ready`. We MUST wait on
+    // this before postMessage(init), otherwise the very first message is
+    // delivered to a webview iframe that has no handler yet and gets lost.
+    private webviewReady = new Map<
+        string,
+        { promise: Promise<void>; resolve: () => void }
+    >();
 
     constructor(
         private readonly context: vscode.ExtensionContext,
@@ -117,9 +125,25 @@ export class SessionManager {
         const session = this.requireSession();
         const parsed = parseAdoprUri(uri.toString());
         const filePath = parsed.filePath;
-        session.openedEditors.set(uri.toString(), panel);
+        const uriKey = uri.toString();
+        session.openedEditors.set(uriKey, panel);
+
+        // Create the ready-signal deferred BEFORE setting webview.html so
+        // the 'ready' message can never arrive before the deferred exists.
+        let resolveReady!: () => void;
+        let rejectReady!: (err: Error) => void;
+        const readyPromise = new Promise<void>((resolve, reject) => {
+            resolveReady = resolve;
+            rejectReady = reject;
+        });
+        this.webviewReady.set(uriKey, { promise: readyPromise, resolve: resolveReady });
+
         panel.onDidDispose(() => {
-            session.openedEditors.delete(uri.toString());
+            session.openedEditors.delete(uriKey);
+            this.webviewReady.delete(uriKey);
+            // Unblock any pending await on readyPromise so attachRenderedView
+            // can complete (the panel is gone — there's nothing to render).
+            rejectReady(new Error('Webview disposed before ready'));
         });
 
         // Build HTML envelope for the panel.
@@ -132,7 +156,7 @@ export class SessionManager {
         panel.webview.html = renderedViewHtml({ csp, nonce, scriptUri: scriptUri.toString() });
 
         panel.webview.onDidReceiveMessage((msg: RenderedViewToHost) => {
-            void this.handleRenderedViewMessage(uri.toString(), msg);
+            void this.handleRenderedViewMessage(uriKey, msg);
         });
 
         // Kick off head + base fetches in parallel so the base fetch can
@@ -184,6 +208,15 @@ export class SessionManager {
                 diffAnnotations: [],
                 protocolVersion: 1
             };
+            // Block on the webview's 'ready' signal. If the message listener
+            // is not yet attached when we postMessage, the event is silently
+            // dropped (no DOM listener => no handler runs). Always wait.
+            const waitForReadyStart = Date.now();
+            await readyPromise;
+            this.log.info('Init waited for ready.', {
+                filePath,
+                ms: Date.now() - waitForReadyStart
+            });
             const initPostStartedAt = Date.now();
             const postInitPromise = Promise.resolve(panel.webview.postMessage({
                 type: 'init',
@@ -260,6 +293,7 @@ export class SessionManager {
         switch (msg.type) {
             case 'ready':
                 this.log.info('Webview ready signal received.', { uri: uriStr });
+                this.webviewReady.get(uriStr)?.resolve();
                 break;
             case 'selectionMade':
                 if (!this.commentController) return;
