@@ -12,7 +12,7 @@ standalone file and follow these same rules.
 
 ## Formatting
 
-- 4-space indent (matches `.editorconfig` global), spaces only.
+- 2-space indent, spaces only.
 - LF line endings; trailing newline at end of file; no trailing
   whitespace.
 - Lowercase tag names and lowercase attribute names. Lowercase

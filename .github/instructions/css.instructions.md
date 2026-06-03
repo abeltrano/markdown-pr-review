@@ -12,7 +12,7 @@ hand-written `.css` files.
 
 ## Formatting
 
-- 4-space indent (matches `.editorconfig` global), spaces only.
+- 2-space indent, spaces only.
 - LF line endings; trailing newline at end of file; no trailing
   whitespace.
 - One selector per line in a selector list, comma-terminated:
@@ -21,7 +21,7 @@ hand-written `.css` files.
   h1,
   h2,
   h3 {
-      font-weight: 600;
+    font-weight: 600;
   }
   ```
 

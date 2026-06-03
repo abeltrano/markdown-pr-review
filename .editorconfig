@@ -13,6 +13,9 @@ trim_trailing_whitespace = true
 [*.{json,jsonc,yml,yaml}]
 indent_size = 2
 
+[*.{css,html,htm,svg}]
+indent_size = 2
+
 [*.md]
 # Two trailing spaces in markdown denote a hard line break.
 trim_trailing_whitespace = false
