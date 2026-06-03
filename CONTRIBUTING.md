@@ -147,6 +147,37 @@ fix(webview): register message handler before webview.html
 ui(rendered): use codicon-comment-discussion for thread markers
 ```
 
+### Signed commits
+
+`main` is protected with **required signatures**. Every commit
+landing on `main` must carry a valid GPG, SSH, or S/MIME signature
+that GitHub can verify against a key registered on the committer's
+GitHub account.
+
+The simplest path on a fresh machine is SSH signing, reusing the
+same SSH key you use to push:
+
+```bash
+# Tell git to sign commits and tags with your SSH key.
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+git config --global tag.gpgsign true
+```
+
+Then register that same public key on GitHub a **second** time
+under **Settings → SSH and GPG keys → New SSH key → Key type:
+Signing Key** (signing keys are distinct from auth keys in
+GitHub's model, even if the bytes are identical).
+
+Verify a commit you've already made shows `verified` on GitHub:
+
+```bash
+git push origin <branch>
+gh api repos/abeltrano/markdown-pr-review/commits/<sha> \
+  --jq '.commit.verification'
+```
+
 ## Pull requests
 
 `main` is protected: every change — even from the sole maintainer —
