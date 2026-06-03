@@ -48,6 +48,9 @@ window.addEventListener('message', (event: MessageEvent<HostToRenderedView>) => 
             case 'init':
                 onInit(msg.payload);
                 break;
+            case 'diffApplied':
+                onDiffApplied(msg.payload);
+                break;
             case 'threadCreated':
                 state.threads.push(msg.payload.thread);
                 refreshThreadMarkers(state.threads);
@@ -72,6 +75,28 @@ window.addEventListener('message', (event: MessageEvent<HostToRenderedView>) => 
         log('error', 'Failed to handle host message', String(err));
     }
 });
+
+function onDiffApplied(payload: {
+    html: string;
+    sourceMap: Record<string, [number, number]>;
+    diffAnnotations: unknown[];
+}): void {
+    const article = document.getElementById('content') as HTMLElement | null;
+    if (!article) return;
+    article.innerHTML = payload.html;
+    if (state.init) {
+        state.init.fileContent.html = payload.html;
+        state.init.fileContent.sourceMap = payload.sourceMap;
+        // diffAnnotations is unused by the renderer post-init, but keep the
+        // state object internally consistent in case future code reads it.
+        (state.init as { diffAnnotations: unknown[] }).diffAnnotations =
+            payload.diffAnnotations;
+    }
+    mountThreadMarkers(state.threads, article);
+    void initMermaid({
+        onError: (msg) => log('warn', 'Mermaid render failure', msg)
+    });
+}
 
 function onInit(payload: RenderedViewInitPayload): void {
     state.init = payload;

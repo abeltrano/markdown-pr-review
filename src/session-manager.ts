@@ -135,61 +135,74 @@ export class SessionManager {
             void this.handleRenderedViewMessage(uri.toString(), msg);
         });
 
+        // Kick off head + base fetches in parallel so the base fetch can
+        // overlap network latency with the head fetch + initial render.
+        const headPromise = this.getFileContent(filePath);
+        const basePromise: Promise<string | null> = session.baseSha
+            ? this.adoClient
+                .getFileContentOrNullByRef(session.pr.ref, session.baseSha, filePath)
+                .catch((err) => {
+                    this.log.warn('Base fetch failed; diff annotations skipped.', {
+                        filePath,
+                        error: err instanceof Error ? err.message : String(err)
+                    });
+                    return null;
+                })
+            : Promise.resolve(null);
+
         try {
-            const initPayload = await this.buildInitPayload(filePath);
-            await panel.webview.postMessage({ type: 'init', payload: initPayload } satisfies HostToRenderedView);
+            // Phase 1: render the head markdown without diff bars and post
+            // init so the user sees rendered content the moment head arrives.
+            const headMarkdown = await headPromise;
+            const initRender = renderMarkdown({ markdown: headMarkdown, diffAnnotations: [] });
+            const initPayload: RenderedViewInitPayload = {
+                sessionId: session.id,
+                filePath,
+                pullRequest: {
+                    id: session.pr.ref.pullRequestId,
+                    title: session.pr.title,
+                    sourceRef: session.pr.sourceRefName,
+                    targetRef: session.pr.targetRefName
+                },
+                headSha: session.headSha,
+                baseSha: session.baseSha,
+                fileContent: { html: initRender.html, sourceMap: initRender.sourceMap },
+                threads: session.threads.filter(t => t.threadContext?.filePath === filePath),
+                diffAnnotations: [],
+                protocolVersion: 1
+            };
+            await panel.webview.postMessage({
+                type: 'init',
+                payload: initPayload
+            } satisfies HostToRenderedView);
+
+            // Phase 2: once the base markdown is available, compute diff
+            // annotations and re-render with gutter bars applied. Sent as
+            // a 'diffApplied' message so the webview only swaps innerHTML.
+            const baseMarkdown = await basePromise;
+            if (baseMarkdown == null) return;
+            const diffAnnotations = annotateBlockDiff(headMarkdown, baseMarkdown);
+            if (diffAnnotations.length === 0) return;
+            const diffRender = renderMarkdown({ markdown: headMarkdown, diffAnnotations });
+            await panel.webview.postMessage({
+                type: 'diffApplied',
+                payload: {
+                    html: diffRender.html,
+                    sourceMap: diffRender.sourceMap,
+                    diffAnnotations
+                }
+            } satisfies HostToRenderedView);
         } catch (err) {
-            this.log.error('Failed to build init payload', {
+            this.log.error('Failed to render rendered view', {
                 filePath,
                 error: err instanceof Error ? err.message : String(err)
             });
             const payload = toErrorPayload(err);
-            void panel.webview.postMessage({ type: 'error', payload } satisfies HostToRenderedView);
+            void panel.webview.postMessage({
+                type: 'error',
+                payload
+            } satisfies HostToRenderedView);
             void surfaceError(err, `Open ${filePath}`);
-        }
-    }
-
-    private async buildInitPayload(filePath: string): Promise<RenderedViewInitPayload> {
-        const session = this.requireSession();
-        const markdown = await this.getFileContent(filePath);
-        const diffAnnotations = await this.computeDiffAnnotations(filePath, markdown);
-        const result = renderMarkdown({ markdown, diffAnnotations });
-        return {
-            sessionId: session.id,
-            filePath,
-            pullRequest: {
-                id: session.pr.ref.pullRequestId,
-                title: session.pr.title,
-                sourceRef: session.pr.sourceRefName,
-                targetRef: session.pr.targetRefName
-            },
-            headSha: session.headSha,
-            baseSha: session.baseSha,
-            fileContent: { html: result.html, sourceMap: result.sourceMap },
-            threads: session.threads.filter(t => t.threadContext?.filePath === filePath),
-            diffAnnotations,
-            protocolVersion: 1
-        };
-    }
-
-    private async computeDiffAnnotations(filePath: string, headMarkdown: string) {
-        const session = this.requireSession();
-        if (!session.baseSha) {
-            return [];
-        }
-        try {
-            const baseMarkdown = await this.adoClient.getFileContentOrNullByRef(
-                session.pr.ref,
-                session.baseSha,
-                filePath
-            );
-            return annotateBlockDiff(headMarkdown, baseMarkdown);
-        } catch (err) {
-            this.log.warn('Failed to compute diff annotations', {
-                filePath,
-                error: (err as Error).message
-            });
-            return [];
         }
     }
 

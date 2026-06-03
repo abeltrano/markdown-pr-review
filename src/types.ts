@@ -176,7 +176,15 @@ export type HostToRenderedView =
     | { type: 'threadsRefreshed'; payload: { threads: Thread[] } }
     | { type: 'selectionCleared' }
     | { type: 'error'; payload: ErrorPayload }
-    | { type: 'staleCommit'; payload: { newSha: string; oldSha: string } };
+    | { type: 'staleCommit'; payload: { newSha: string; oldSha: string } }
+    | {
+        type: 'diffApplied';
+        payload: {
+            html: string;
+            sourceMap: Record<string, [number, number]>;
+            diffAnnotations: DiffAnnotation[];
+        };
+    };
 
 export interface RenderedViewInitPayload {
     sessionId: string;

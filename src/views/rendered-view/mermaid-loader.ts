@@ -4,32 +4,41 @@
 // tag at runtime.
 
 let mermaidModule: typeof import('mermaid') | undefined;
-
-let initialized = false;
+let mermaidConfigured = false;
 
 export interface MermaidLoaderOptions {
     onError: (msg: string) => void;
 }
 
 export async function initMermaid(opts: MermaidLoaderOptions): Promise<void> {
-    if (initialized) return;
-    initialized = true;
     try {
         const containers = document.querySelectorAll<HTMLElement>('div.mermaid');
         if (containers.length === 0) {
             return;
         }
+        // Only fresh containers still hold the source <script> tag. After
+        // a successful render we replace innerHTML with the SVG, so the
+        // selector below skips already-rendered diagrams on re-invocation
+        // (which happens after 'diffApplied' swaps in fresh markup).
+        const fresh: HTMLElement[] = [];
+        for (const c of Array.from(containers)) {
+            if (c.querySelector('script[type="text/x-mermaid"]')) fresh.push(c);
+        }
+        if (fresh.length === 0) return;
         if (!mermaidModule) {
             mermaidModule = await import('mermaid');
         }
         const mermaid = mermaidModule.default;
-        mermaid.initialize({
-            startOnLoad: false,
-            theme: 'default',
-            securityLevel: 'strict'
-        });
-        for (let i = 0; i < containers.length; i++) {
-            const container = containers[i]!;
+        if (!mermaidConfigured) {
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: 'default',
+                securityLevel: 'strict'
+            });
+            mermaidConfigured = true;
+        }
+        for (let i = 0; i < fresh.length; i++) {
+            const container = fresh[i]!;
             const scriptEl = container.querySelector('script[type="text/x-mermaid"]');
             if (!scriptEl) continue;
             const source = unescapeMermaidSource(scriptEl.textContent ?? '');

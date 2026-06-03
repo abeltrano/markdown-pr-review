@@ -32,6 +32,11 @@ import type {
     Thread
 } from './types';
 
+// Hard cap on a single ADO REST request before we give up and surface a
+// timeout error. Most calls finish in <2s; this exists so a stalled
+// network or backend doesn't leave the rendered view spinning forever.
+const FETCH_TIMEOUT_MS = 90_000;
+
 const API_VERSION = '7.1';
 
 export interface CreateThreadInput {
@@ -312,17 +317,37 @@ export class HttpAdoClient implements AdoClient {
             }
             this.log.info(`${method} ${url}`, redactAuthHeaders({ attempt, method, url }));
             let response: Response;
+            const controller = new AbortController();
+            const timeoutHandle = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
             try {
-                response = await fetch(url, { method, headers, body: serializedBody });
+                try {
+                    response = await fetch(url, {
+                        method,
+                        headers,
+                        body: serializedBody,
+                        signal: controller.signal
+                    });
+                } finally {
+                    clearTimeout(timeoutHandle);
+                }
             } catch (err) {
-                lastError = err;
-                this.log.warn(`Network error on attempt ${attempt}.`, {
-                    url,
-                    method,
-                    error: err instanceof Error ? err.message : String(err)
-                });
+                const isTimeout = (err as { name?: string })?.name === 'AbortError';
+                const wrapped = isTimeout
+                    ? new Error(`Request timed out after ${FETCH_TIMEOUT_MS / 1000}s`)
+                    : err;
+                lastError = wrapped;
+                this.log.warn(
+                    isTimeout
+                        ? `Request timed out (${FETCH_TIMEOUT_MS} ms) on attempt ${attempt}.`
+                        : `Network error on attempt ${attempt}.`,
+                    {
+                        url,
+                        method,
+                        error: wrapped instanceof Error ? wrapped.message : String(wrapped)
+                    }
+                );
                 if (attempt >= maxAttempts) {
-                    throw new AdoNetworkError(url, err);
+                    throw new AdoNetworkError(url, wrapped);
                 }
                 await sleep(backoffMs(attempt));
                 continue;
