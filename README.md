@@ -1,5 +1,8 @@
 # Markdown PR Review
 
+[![CI](https://github.com/abeltrano/markdown-pr-review/actions/workflows/ci.yml/badge.svg)](https://github.com/abeltrano/markdown-pr-review/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > A Visual Studio Code extension that lets you review markdown design
 > and architecture documents in Azure DevOps pull requests using a
 > **fully rendered markdown view** — and create PR comment threads by

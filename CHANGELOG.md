@@ -136,3 +136,6 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - Microsoft Entra ID authentication via
   `vscode.authentication.getSession('microsoft', …)` with PAT fallback.
 - Mermaid diagram support bundled into the rendered view.
+
+[Unreleased]: https://github.com/abeltrano/markdown-pr-review/compare/v0.4.15...HEAD
+[0.4.15]: https://github.com/abeltrano/markdown-pr-review/releases/tag/v0.4.15
