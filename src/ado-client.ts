@@ -35,7 +35,7 @@ import type {
 // Hard cap on a single ADO REST request before we give up and surface a
 // timeout error. Most calls finish in <2s; this exists so a stalled
 // network or backend doesn't leave the rendered view spinning forever.
-const FETCH_TIMEOUT_MS = 90_000;
+const FETCH_TIMEOUT_MS = 30_000;
 
 const API_VERSION = '7.1';
 
@@ -320,6 +320,8 @@ export class HttpAdoClient implements AdoClient {
             let bodyText: string;
             const controller = new AbortController();
             const timeoutHandle = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+            const startedAt = Date.now();
+            let headersAt = 0;
             try {
                 // The timeout covers BOTH header arrival (fetch) AND body
                 // streaming (response.text/safeReadText). microsoft/OS's
@@ -332,22 +334,44 @@ export class HttpAdoClient implements AdoClient {
                     body: serializedBody,
                     signal: controller.signal
                 });
+                headersAt = Date.now();
                 bodyText = response.ok
                     ? await response.text()
                     : await safeReadText(response);
+                const bodyAt = Date.now();
+                this.log.info(
+                    `${method} ${response.status} (${headersAt - startedAt}ms hdrs, ` +
+                        `${bodyAt - headersAt}ms body, ${bodyText.length} bytes)`,
+                    {
+                        attempt,
+                        method,
+                        status: response.status,
+                        msToHeaders: headersAt - startedAt,
+                        msToBody: bodyAt - headersAt,
+                        bytes: bodyText.length
+                    }
+                );
             } catch (err) {
                 const isTimeout = (err as { name?: string })?.name === 'AbortError';
+                const phase = headersAt === 0 ? 'headers' : 'body';
+                const elapsedMs = Date.now() - startedAt;
                 const wrapped = isTimeout
-                    ? new Error(`Request timed out after ${FETCH_TIMEOUT_MS / 1000}s`)
+                    ? new Error(
+                          `Request timed out after ${FETCH_TIMEOUT_MS / 1000}s ` +
+                              `during ${phase} read (${elapsedMs}ms elapsed)`
+                      )
                     : err;
                 lastError = wrapped;
                 this.log.warn(
                     isTimeout
-                        ? `Request timed out (${FETCH_TIMEOUT_MS} ms) on attempt ${attempt}.`
+                        ? `Request timed out (${FETCH_TIMEOUT_MS} ms) on attempt ${attempt} ` +
+                              `during ${phase} read.`
                         : `Network error on attempt ${attempt}.`,
                     {
                         url,
                         method,
+                        phase,
+                        elapsedMs,
                         error: wrapped instanceof Error ? wrapped.message : String(wrapped)
                     }
                 );
