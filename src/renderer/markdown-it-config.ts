@@ -21,7 +21,7 @@ export function createMarkdownIt(): MarkdownIt {
         linkify: true,
         breaks: false
     });
-    applySourceLineAttributes(md);
     applyMermaidFenceRule(md);
+    applySourceLineAttributes(md);
     return md;
 }

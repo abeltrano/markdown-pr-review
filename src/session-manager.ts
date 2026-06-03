@@ -261,7 +261,51 @@ function renderedViewHtml(opts: { csp: string; nonce: string; scriptUri: string 
         article#content table { border-collapse: collapse; margin: 8px 0; }
         article#content th, article#content td { border: 1px solid var(--vscode-editorWidget-border); padding: 4px 8px; }
         article#content blockquote { border-left: 3px solid var(--vscode-editorWidget-border); padding-left: 12px; opacity: 0.85; }
-        .thread-marker { background: none; border: 1px solid var(--vscode-editorWidget-border); cursor: pointer; }
+        .ado-thread-marker {
+            display: inline-flex; align-items: center; justify-content: center;
+            margin-left: 6px; padding: 0 4px;
+            background: var(--vscode-badge-background, transparent);
+            color: var(--vscode-badge-foreground, inherit);
+            border: 1px solid var(--vscode-editorWidget-border);
+            border-radius: 10px;
+            cursor: pointer; font-size: 0.85em; line-height: 1.2;
+            vertical-align: baseline;
+        }
+        .ado-thread-marker[aria-expanded="true"] {
+            background: var(--vscode-list-activeSelectionBackground);
+            color: var(--vscode-list-activeSelectionForeground);
+        }
+        .ado-thread-marker:focus { outline: 1px solid var(--vscode-focusBorder); }
+        .ado-thread-popover {
+            min-width: 260px; max-width: 480px; max-height: 60vh; overflow: auto;
+            background: var(--vscode-editorHoverWidget-background);
+            color: var(--vscode-editorHoverWidget-foreground);
+            border: 1px solid var(--vscode-editorHoverWidget-border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border-radius: 4px; padding: 8px 12px; font-size: 0.9em;
+            z-index: 100;
+        }
+        .ado-thread-popover__header {
+            display: flex; justify-content: space-between; align-items: center;
+            font-weight: 600; padding-bottom: 6px;
+            border-bottom: 1px solid var(--vscode-editorWidget-border);
+            margin-bottom: 6px;
+        }
+        .ado-thread-popover__close {
+            background: none; border: 0; color: inherit; cursor: pointer;
+            font-size: 1.2em; padding: 0 4px;
+        }
+        .ado-thread-popover__comment {
+            padding: 4px 0;
+            border-bottom: 1px dashed var(--vscode-editorWidget-border);
+        }
+        .ado-thread-popover__comment:last-child { border-bottom: 0; }
+        .ado-thread-popover__author {
+            font-size: 0.85em; opacity: 0.8; margin-bottom: 2px;
+        }
+        .ado-thread-popover__body {
+            white-space: pre-wrap; word-wrap: break-word;
+        }
         .banner { padding: 6px 12px; }
         .banner.warn { background: var(--vscode-inputValidation-warningBackground); }
         .banner.error { background: var(--vscode-inputValidation-errorBackground); color: var(--vscode-inputValidation-errorForeground); }

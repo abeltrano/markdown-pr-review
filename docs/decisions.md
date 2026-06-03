@@ -107,6 +107,100 @@ rationale, and links back to the relevant requirement / open question.
 
 ---
 
+## D-016 (2026-06-03 04:00 PT) — html_block deferred under html:false safer default
+
+- **Context**: TASK-025 unit-test pass uncovered that markdown-it
+  configured with `html: false` (the safer setting per
+  REQ-NFR-SEC-001 AC-2) does NOT emit `html_block` tokens; raw HTML
+  is rendered as escaped text inside a paragraph. Design.md and
+  validation TC-032 assumed html_block tokens would fire.
+- **Decision**: Keep `html: false` for v0.2. TC-032 test updated to
+  verify the safer behaviour (raw HTML escaped, source-line attrs on
+  the host paragraph). Block-level HTML (e.g. `<details>`) does NOT
+  render as a live element in v0.2.
+- **Rationale**: `html: true` would require a sanitization layer
+  (e.g. DOMPurify, ~50 KB extra bundle, more CSP work). For personal
+  use against trusted PR authors this is acceptable trade-off; the
+  feature can be re-enabled in v0.4+ behind a sanitizer.
+- **REQ/OQ**: REQ-CORE-005 AC-1 (partial — html_block re-enablement
+  deferred); REQ-NFR-SEC-001 AC-2 (satisfied with stronger guarantee).
+
+---
+
+## D-017 (2026-06-03 04:00 PT) — Mermaid renderer rule registered BEFORE source-line attributes
+
+- **Context**: TASK-025 unit tests showed mermaid blocks rendered
+  without `data-source-line-start/end` attrs because the mermaid
+  rule was registered AFTER source-line-attributes, so it intercepted
+  `fence` and bypassed the annotator chain.
+- **Decision**: In `createMarkdownIt()`, call
+  `applyMermaidFenceRule(md)` first, then
+  `applySourceLineAttributes(md)`. Source-line wraps mermaid as
+  prior, annotates the token, then delegates — preserving both
+  behaviours.
+- **Rationale**: Order matters because each rule overwrites the same
+  `md.renderer.rules.fence` slot and captures the previous slot as
+  `prior`. Source-line is universally additive (just annotates +
+  delegates), so it MUST wrap the more specialised rules.
+- **REQ/OQ**: REQ-COMMENT-002 AC-1; REQ-CORE-007 AC-1, AC-2.
+
+---
+
+## D-018 (2026-06-03 04:00 PT) — Extracted `redactAuthHeaders` to `src/redact.ts`  
+
+- **Context**: TASK-025 needed to unit-test `redactAuthHeaders`,
+  which was defined in `src/logger.ts`. Logger top-imports `vscode`,
+  so importing the function in plain mocha threw
+  `Cannot find module 'vscode'`.
+- **Decision**: Move `redactAuthHeaders` + supporting constants to a
+  new pure module `src/redact.ts` (no vscode dependency). Logger
+  re-exports them for backward compatibility. Logger.ts also gains a
+  new `redactJwtsAndUrlTokens` helper for the `write()` method's
+  message sanitization (which now catches access_token /
+  refresh_token URL query parameters too).
+- **Rationale**: Standard separation-of-concerns; preferred over a
+  vscode-stub require hook because it makes the pure logic
+  independently testable forever.
+- **REQ/OQ**: REQ-NFR-MAINT-001 AC-1; TC-145.
+
+---
+
+## D-019 (2026-06-03 04:00 PT) — Test harness: plain mocha + tsx loader (no @vscode/test-electron)
+
+- **Context**: TASK-024 test infrastructure choice. Implementation
+  plan suggested `@vscode/test-electron` for integration tests.
+- **Decision**: For v0.2, use plain `mocha` with the `tsx` Node
+  loader (registered via `.mocharc.cjs` `node-option:
+  ['import=tsx']`) for unit tests only. No `@vscode/test-electron`,
+  no integration tests yet.
+- **Rationale**: All v0.2-targeted unit tests are pure functions (no
+  vscode runtime needed). `@vscode/test-electron` adds 100+ MB
+  download + Windows headless quirks (IRISK-008). Plain mocha+tsx is
+  zero-config, runs in <100 ms, and covers everything REQ-NFR-MAINT-001
+  requires for v0.2. Integration tests deferrable to v0.4 polish.
+- **REQ/OQ**: REQ-NFR-MAINT-001 AC-2; IRISK-008.
+
+---
+
+## D-020 (2026-06-03 04:00 PT) — Thread popover renders plain-text comment content
+
+- **Context**: TASK-026 marker → popover wiring. Design.md §3.2 says
+  `rendering the thread's comments[] via the same markdown-it bundle`.
+  But markdown-it is NOT in the rendered-view webview bundle (we
+  render in the host and ship HTML).
+- **Decision**: For v0.2, render comment content as plain text via
+  `textContent` (with CSS `white-space: pre-wrap`). Markdown
+  rendering of comments is deferred.
+- **Rationale**: Avoids shipping markdown-it (~150 KB) to the webview
+  bundle; plain text is sufficient for the v0.2 scope. The popover
+  structure (header / comments list / footer) is unchanged, so
+  switching to rendered markdown later is a 1-line change inside
+  `buildPopover()`.
+- **REQ/OQ**: REQ-COMMENT-005 AC-1 (satisfied); REQ-COMMENT-005 AC-2
+  (deferred — formatting fidelity).
+
+---
+
 ## D-015 (2026-06-03 02:50 PT) — Bare-PR-id repositoryName left empty
 
 - **Context**: TASK-007. Bare-id parse path can't infer the repo

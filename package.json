@@ -111,9 +111,15 @@
         "viewType": "adoMdReview.renderedView",
         "displayName": "ADO MD Rendered View",
         "selector": [
-          { "filenamePattern": "*.md" },
-          { "filenamePattern": "*.markdown" },
-          { "filenamePattern": "*.mdx" }
+          {
+            "filenamePattern": "*.md"
+          },
+          {
+            "filenamePattern": "*.markdown"
+          },
+          {
+            "filenamePattern": "*.mdx"
+          }
         ],
         "priority": "option"
       }
@@ -146,15 +152,22 @@
     "watch": "node esbuild.js --watch",
     "build": "tsc --noEmit && node esbuild.js --production",
     "package": "npm run build && vsce package --no-yarn",
-    "test": "npm run compile && node ./out/test/runTests.js",
+    "test": "mocha",
     "lint": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/chai": "^4.3.20",
     "@types/markdown-it": "^14.1.2",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.14.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^2.32.0",
+    "chai": "^4.5.0",
     "esbuild": "^0.23.0",
+    "mocha": "^11.7.6",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.5.0"
   },
   "dependencies": {
