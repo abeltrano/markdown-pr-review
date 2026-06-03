@@ -11,10 +11,10 @@
 
 import * as vscode from 'vscode';
 import type { ChangedFile, Thread } from '../types';
-import { buildAdoprUri } from '../adopr-uri';
+import { buildMdprUri } from '../mdpr-uri';
 import type { SessionManager } from '../session-manager';
 
-const NON_MARKDOWN_INFO_COMMAND = 'adoMdReview.showNonMarkdownInfo';
+const NON_MARKDOWN_INFO_COMMAND = 'markdownPrReview.showNonMarkdownInfo';
 
 export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
     private readonly _onDidChangeTreeData = new vscode.EventEmitter<
@@ -88,14 +88,14 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
         item.iconPath = new vscode.ThemeIcon('markdown');
         const session = this.sessionManager.getActiveSession();
         if (session) {
-            const uri = buildAdoprUri(
+            const uri = buildMdprUri(
                 { ...session.pr.ref, repositoryId: session.pr.ref.repositoryId },
                 file.filePath
             );
             item.command = {
                 command: 'vscode.openWith',
                 title: 'Open in Rendered View',
-                arguments: [uri, 'adoMdReview.renderedView']
+                arguments: [uri, 'markdownPrReview.renderedView']
             };
         }
         return item;

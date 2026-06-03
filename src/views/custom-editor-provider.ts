@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-// CustomReadonlyEditorProvider for adopr:// URIs.
+// CustomReadonlyEditorProvider for mdpr:// URIs.
 //
 // Per design.md §4.1.2:
-//   - VS Code calls openCustomDocument when the user opens an adopr:// URI.
+//   - VS Code calls openCustomDocument when the user opens an mdpr:// URI.
 //   - We register the URI with the SessionManager and resolve the editor by
 //     building a WebviewPanel hosting the rendered-view bundle.
 //   - The provider hands off message routing to SessionManager.
@@ -17,7 +17,7 @@ interface AdoMdDocument extends vscode.CustomDocument {
 }
 
 export class RenderedViewEditorProvider implements vscode.CustomReadonlyEditorProvider<AdoMdDocument> {
-    public static readonly viewType = 'adoMdReview.renderedView';
+    public static readonly viewType = 'markdownPrReview.renderedView';
 
     private readonly log = getLogger('CustomEditorProvider');
 

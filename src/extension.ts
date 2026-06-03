@@ -3,7 +3,7 @@
 //   - VsCodeAuthManager
 //   - SessionManager
 //   - CommentInputViewProvider (sidebar)
-//   - RenderedViewEditorProvider (custom editor for adopr://)
+//   - RenderedViewEditorProvider (custom editor for mdpr://)
 //   - FileTreeProvider (sidebar tree of changed files)
 //   - Command registry (5 commands)
 
@@ -17,7 +17,7 @@ import { FileTreeProvider } from './views/file-tree-provider';
 import { registerCommands } from './command-registry';
 import { StatusBarController } from './status-bar';
 import { StalePRWatcher } from './stale-pr-watcher';
-import { parseAdoprUri } from './adopr-uri';
+import { parseMdprUri } from './mdpr-uri';
 
 export function activate(context: vscode.ExtensionContext): void {
     const log = getLogger('Extension');
@@ -33,7 +33,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const statusBar = new StatusBarController();
     const staleWatcher = new StalePRWatcher(sessionManager.getAdoClient());
 
-    // Custom editor for adopr:// URIs.
+    // Custom editor for mdpr:// URIs.
     context.subscriptions.push(
         vscode.window.registerCustomEditorProvider(
             RenderedViewEditorProvider.viewType,
@@ -50,7 +50,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Changed-files tree.
     const treeProvider = new FileTreeProvider(sessionManager);
     context.subscriptions.push(
-        vscode.window.registerTreeDataProvider('adoMdReview.fileTree', treeProvider)
+        vscode.window.registerTreeDataProvider('markdownPrReview.fileTree', treeProvider)
     );
 
     // Commands.
@@ -65,9 +65,9 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         const activeEditor = vscode.window.activeTextEditor;
         let fileName: string | null = null;
-        if (activeEditor && activeEditor.document.uri.scheme === 'adopr') {
+        if (activeEditor && activeEditor.document.uri.scheme === 'mdpr') {
             try {
-                fileName = parseAdoprUri(activeEditor.document.uri.toString()).filePath.split('/').pop() ?? null;
+                fileName = parseMdprUri(activeEditor.document.uri.toString()).filePath.split('/').pop() ?? null;
             } catch {
                 fileName = null;
             }

@@ -11,11 +11,11 @@ import type { CommentInputViewProvider } from './comment-input-view-provider';
 import { ERROR_CODES, surfaceError } from './error-utils';
 
 const COMMAND_IDS = {
-    openPR: 'adoMdReview.openPullRequest',
-    refreshThreads: 'adoMdReview.refreshThreads',
-    addComment: 'adoMdReview.addComment',
-    refreshToHead: 'adoMdReview.refreshToHead',
-    closeSession: 'adoMdReview.closeSession'
+    openPR: 'markdownPrReview.openPullRequest',
+    refreshThreads: 'markdownPrReview.refreshThreads',
+    addComment: 'markdownPrReview.addComment',
+    refreshToHead: 'markdownPrReview.refreshToHead',
+    closeSession: 'markdownPrReview.closeSession'
 } as const;
 
 export function registerCommands(
@@ -75,7 +75,7 @@ export function registerCommands(
             void vscode.window.showInformationMessage(
                 'Select text in the rendered view and the comment input panel will activate.'
             );
-            await vscode.commands.executeCommand('workbench.view.extension.adoMdReview');
+            await vscode.commands.executeCommand('workbench.view.extension.markdownPrReview');
         }),
 
         vscode.commands.registerCommand(COMMAND_IDS.refreshToHead, async () => {
@@ -101,7 +101,7 @@ export function registerCommands(
 }
 
 function getSettings(): AdoSettings {
-    const cfg = vscode.workspace.getConfiguration('adoMdReview');
+    const cfg = vscode.workspace.getConfiguration('markdownPrReview');
     const org = cfg.get<string>('defaultOrganization', '').trim();
     const project = cfg.get<string>('defaultProject', '').trim();
     return {

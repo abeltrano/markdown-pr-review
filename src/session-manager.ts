@@ -4,7 +4,7 @@
 // Owns the lifecycle of a Session and bridges:
 //   - PR loading (parser → AdoClient → first set of files/threads)
 //   - File content caching (filePath → raw markdown @ headSha)
-//   - WebviewPanel registration for opened adopr:// URIs
+//   - WebviewPanel registration for opened mdpr:// URIs
 //   - Routing webview ↔ comment-controller ↔ ado-client
 
 import * as vscode from 'vscode';
@@ -14,7 +14,7 @@ import type { CommentInputViewProvider } from './comment-input-view-provider';
 import { getLogger } from './logger';
 import { render as renderMarkdown } from './renderer';
 import { annotateBlockDiff } from './renderer/diff-annotator';
-import { parseAdoprUri } from './adopr-uri';
+import { parseMdprUri } from './mdpr-uri';
 import { buildRenderedViewCsp, generateNonce } from './views/csp';
 import { surfaceError, toErrorPayload } from './error-utils';
 import type { AuthManager } from './auth-manager';
@@ -123,7 +123,7 @@ export class SessionManager {
 
     async attachRenderedView(uri: vscode.Uri, panel: vscode.WebviewPanel): Promise<void> {
         const session = this.requireSession();
-        const parsed = parseAdoprUri(uri.toString());
+        const parsed = parseMdprUri(uri.toString());
         const filePath = parsed.filePath;
         const uriKey = uri.toString();
         session.openedEditors.set(uriKey, panel);
@@ -358,7 +358,7 @@ export class SessionManager {
         for (const [_uri, panel] of session.openedEditors) {
             void panel.webview.postMessage({
                 type: 'threadsRefreshed',
-                payload: { threads: threads.filter(t => t.threadContext?.filePath === parseAdoprUri(_uri).filePath) }
+                payload: { threads: threads.filter(t => t.threadContext?.filePath === parseMdprUri(_uri).filePath) }
             } satisfies HostToRenderedView);
         }
     }
@@ -380,7 +380,7 @@ export class SessionManager {
         // Push to the originating panel (and any others showing the same file).
         const filePath = thread.threadContext?.filePath;
         for (const [uri, panel] of session.openedEditors) {
-            const parsed = parseAdoprUri(uri);
+            const parsed = parseMdprUri(uri);
             if (parsed.filePath === filePath) {
                 void panel.webview.postMessage({
                     type: 'threadCreated',

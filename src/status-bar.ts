@@ -8,7 +8,7 @@
 import * as vscode from 'vscode';
 import type { Session } from './types';
 
-const FOCUS_RENDERED_VIEW_COMMAND = 'adoMdReview.focusRenderedView';
+const FOCUS_RENDERED_VIEW_COMMAND = 'markdownPrReview.focusRenderedView';
 
 export class StatusBarController implements vscode.Disposable {
     private readonly item: vscode.StatusBarItem;

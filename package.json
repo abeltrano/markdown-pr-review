@@ -1,5 +1,5 @@
 {
-  "name": "ado-markdown-pr-reviewer",
+  "name": "markdown-pr-review",
   "displayName": "Markdown PR Review",
   "description": "Review Azure DevOps PR markdown files in a rendered view and post comments anchored to raw line ranges.",
   "version": "0.4.11",
@@ -15,78 +15,78 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:adoMdReview.openPullRequest",
-    "onView:adoMdReview.fileTree",
-    "onView:adoMdReview.commentInput",
-    "onCustomEditor:adoMdReview.renderedView"
+    "onCommand:markdownPrReview.openPullRequest",
+    "onView:markdownPrReview.fileTree",
+    "onView:markdownPrReview.commentInput",
+    "onCustomEditor:markdownPrReview.renderedView"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "adoMdReview.openPullRequest",
+        "command": "markdownPrReview.openPullRequest",
         "title": "Open Pull Request…",
         "category": "Markdown PR Review"
       },
       {
-        "command": "adoMdReview.refreshThreads",
+        "command": "markdownPrReview.refreshThreads",
         "title": "Refresh Threads",
         "category": "Markdown PR Review",
         "icon": "$(refresh)"
       },
       {
-        "command": "adoMdReview.addComment",
+        "command": "markdownPrReview.addComment",
         "title": "Add Comment to Selection",
         "category": "Markdown PR Review"
       },
       {
-        "command": "adoMdReview.refreshToHead",
+        "command": "markdownPrReview.refreshToHead",
         "title": "Refresh to Head Commit",
         "category": "Markdown PR Review"
       },
       {
-        "command": "adoMdReview.closeSession",
+        "command": "markdownPrReview.closeSession",
         "title": "Close Session",
         "category": "Markdown PR Review"
       }
     ],
     "keybindings": [
       {
-        "command": "adoMdReview.addComment",
+        "command": "markdownPrReview.addComment",
         "key": "ctrl+alt+c",
         "mac": "cmd+alt+c",
-        "when": "activeCustomEditorId == 'adoMdReview.renderedView'"
+        "when": "activeCustomEditorId == 'markdownPrReview.renderedView'"
       },
       {
-        "command": "adoMdReview.refreshThreads",
+        "command": "markdownPrReview.refreshThreads",
         "key": "ctrl+alt+r",
         "mac": "cmd+alt+r",
-        "when": "activeCustomEditorId == 'adoMdReview.renderedView'"
+        "when": "activeCustomEditorId == 'markdownPrReview.renderedView'"
       },
       {
-        "command": "adoMdReview.refreshToHead",
+        "command": "markdownPrReview.refreshToHead",
         "key": "f5",
-        "when": "activeCustomEditorId == 'adoMdReview.renderedView'"
+        "when": "activeCustomEditorId == 'markdownPrReview.renderedView'"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "adoMdReview",
+          "id": "markdownPrReview",
           "title": "Markdown PR Review",
           "icon": "media/activity-bar.svg"
         }
       ]
     },
     "views": {
-      "adoMdReview": [
+      "markdownPrReview": [
         {
-          "id": "adoMdReview.fileTree",
+          "id": "markdownPrReview.fileTree",
           "name": "Changed Files",
           "icon": "$(files)"
         },
         {
-          "id": "adoMdReview.commentInput",
+          "id": "markdownPrReview.commentInput",
           "name": "Comment Input",
           "type": "webview",
           "icon": "$(comment)"
@@ -96,20 +96,20 @@
     "menus": {
       "view/title": [
         {
-          "command": "adoMdReview.refreshThreads",
-          "when": "view == adoMdReview.fileTree",
+          "command": "markdownPrReview.refreshThreads",
+          "when": "view == markdownPrReview.fileTree",
           "group": "navigation"
         },
         {
-          "command": "adoMdReview.openPullRequest",
-          "when": "view == adoMdReview.fileTree",
+          "command": "markdownPrReview.openPullRequest",
+          "when": "view == markdownPrReview.fileTree",
           "group": "navigation"
         }
       ]
     },
     "customEditors": [
       {
-        "viewType": "adoMdReview.renderedView",
+        "viewType": "markdownPrReview.renderedView",
         "displayName": "Markdown PR Review",
         "selector": [
           {
@@ -128,17 +128,17 @@
     "configuration": {
       "title": "Markdown PR Review",
       "properties": {
-        "adoMdReview.defaultOrganization": {
+        "markdownPrReview.defaultOrganization": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Default Azure DevOps organization. When set together with `#adoMdReview.defaultProject#`, the **Open Pull Request** command will accept a bare PR number (e.g., `12345`) in addition to full URLs.\n\nExample: `contoso` (from `https://dev.azure.com/contoso/...`)."
+          "markdownDescription": "Default Azure DevOps organization. When set together with `#markdownPrReview.defaultProject#`, the **Open Pull Request** command will accept a bare PR number (e.g., `12345`) in addition to full URLs.\n\nExample: `contoso` (from `https://dev.azure.com/contoso/...`)."
         },
-        "adoMdReview.defaultProject": {
+        "markdownPrReview.defaultProject": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Default Azure DevOps project. Must be set together with `#adoMdReview.defaultOrganization#` for bare-PR-id input to work.\n\nExample: `MyProject`."
+          "markdownDescription": "Default Azure DevOps project. Must be set together with `#markdownPrReview.defaultOrganization#` for bare-PR-id input to work.\n\nExample: `MyProject`."
         },
-        "adoMdReview.staleCommitPollSeconds": {
+        "markdownPrReview.staleCommitPollSeconds": {
           "type": "number",
           "default": 30,
           "minimum": 15,

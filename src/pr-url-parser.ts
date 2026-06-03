@@ -35,14 +35,14 @@ export function parsePullRequestInput(
         if (!settings.defaultOrganization) {
             return error(
                 'missing-org',
-                'A bare PR ID was provided but no default organization is configured (setting: adoMdReview.defaultOrganization).',
+                'A bare PR ID was provided but no default organization is configured (setting: markdownPrReview.defaultOrganization).',
                 input
             );
         }
         if (!settings.defaultProject) {
             return error(
                 'missing-project',
-                'A bare PR ID was provided but no default project is configured (setting: adoMdReview.defaultProject).',
+                'A bare PR ID was provided but no default project is configured (setting: markdownPrReview.defaultProject).',
                 input
             );
         }

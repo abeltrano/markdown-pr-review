@@ -100,7 +100,7 @@ export interface MappingResult {
 
 export interface Draft {
     filePath: string;
-    /** adopr:// URI of the rendered-view webview that originated this draft */
+    /** mdpr:// URI of the rendered-view webview that originated this draft */
     originatingFileUri: string;
     range: {
         rightFileStart: LineOffset;
@@ -123,7 +123,7 @@ export interface Session {
     files: ChangedFile[];
     /** filePath → raw markdown at headSha */
     fileContentCache: Map<string, string>;
-    /** adopr:// URI string → panel from CustomEditorProvider */
+    /** mdpr:// URI string → panel from CustomEditorProvider */
     openedEditors: Map<string, vscode.WebviewPanel>;
     threads: Thread[];
     /** At most one draft at a time (see design.md §4.3.3) */
@@ -259,7 +259,7 @@ export interface SelectionPostedPayload {
     mappingMode: MappingMode;
     /** Already truncated to 200 chars per REQ-COMMENT-003 AC-2 */
     autoQuote: string;
-    /** adopr:// URI of the source rendered-view webview (used for threadCreated routing) */
+    /** mdpr:// URI of the source rendered-view webview (used for threadCreated routing) */
     originatingFileUri: string;
 }
 

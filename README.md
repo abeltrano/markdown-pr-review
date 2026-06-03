@@ -32,7 +32,7 @@ ADO PR thread.
 
 This extension is distributed as a sideloaded `.vsix`:
 
-1. Download the latest `ado-markdown-pr-reviewer-*.vsix` from this repo root.
+1. Download the latest `markdown-pr-review-*.vsix` from this repo root.
 2. In VS Code: **Extensions** sidebar → `...` menu →
    **Install from VSIX…** → pick the file.
 3. Reload VS Code if prompted.
@@ -40,7 +40,7 @@ This extension is distributed as a sideloaded `.vsix`:
 Alternative (command line):
 
 ```powershell
-code --install-extension .\ado-markdown-pr-reviewer-0.4.11.vsix
+code --install-extension .\markdown-pr-review-0.4.11.vsix
 ```
 
 ### Build from source
@@ -93,7 +93,7 @@ Code (the launch config is wired up).
 | **Markdown PR Review: Close Session**         | —                 | Clears the active PR session.                                    |
 
 Keybindings only fire when the rendered editor is focused
-(`activeCustomEditorId == 'adoMdReview.renderedView'`).
+(`activeCustomEditorId == 'markdownPrReview.renderedView'`).
 
 ---
 
@@ -104,9 +104,9 @@ All settings live under **Markdown PR Review** in VS Code
 
 | Setting                                | Default | Description                                                    |
 | -------------------------------------- | ------- | -------------------------------------------------------------- |
-| `adoMdReview.defaultOrganization`      | `""`    | Default ADO organization. Set with `defaultProject` to allow bare-PR-id input. |
-| `adoMdReview.defaultProject`           | `""`    | Default ADO project. Must accompany `defaultOrganization`.     |
-| `adoMdReview.staleCommitPollSeconds`   | `30`    | How often to poll for new commits on the active PR. Range 15–60. |
+| `markdownPrReview.defaultOrganization`      | `""`    | Default ADO organization. Set with `defaultProject` to allow bare-PR-id input. |
+| `markdownPrReview.defaultProject`           | `""`    | Default ADO project. Must accompany `defaultOrganization`.     |
+| `markdownPrReview.staleCommitPollSeconds`   | `30`    | How often to poll for new commits on the active PR. Range 15–60. |
 
 ---
 
@@ -188,7 +188,7 @@ mermaid error message.
 ### Stale PR notification keeps appearing
 
 The default 30 s poll interval will detect new commits within that
-window. Increase `adoMdReview.staleCommitPollSeconds` if you find it
+window. Increase `markdownPrReview.staleCommitPollSeconds` if you find it
 intrusive, or use the **Close Session** command to stop polling.
 
 ---

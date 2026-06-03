@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Host-side view provider for the Comment Input sidebar webview.
-// Per design.md §4.1.2 & §4.1.3 (views contribution `adoMdReview.commentInput`).
+// Per design.md §4.1.2 & §4.1.3 (views contribution `markdownPrReview.commentInput`).
 //
 // Receives postMessage events from the webview and forwards them to the
 // CommentController via the SessionManager.
@@ -16,7 +16,7 @@ import type {
 import type { SessionManager } from './session-manager';
 
 export class CommentInputViewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewId = 'adoMdReview.commentInput';
+    public static readonly viewId = 'markdownPrReview.commentInput';
 
     private readonly log = getLogger('CommentInputView');
     private view: vscode.WebviewView | null = null;
@@ -50,7 +50,7 @@ export class CommentInputViewProvider implements vscode.WebviewViewProvider {
     showSelection(payload: SelectionPostedPayload): void {
         if (!this.view) {
             this.pendingSelection = payload;
-            void vscode.commands.executeCommand('adoMdReview.commentInput.focus');
+            void vscode.commands.executeCommand('markdownPrReview.commentInput.focus');
             return;
         }
         this.post({ type: 'selectionPosted', payload });

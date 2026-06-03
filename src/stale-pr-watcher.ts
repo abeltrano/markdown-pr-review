@@ -52,7 +52,7 @@ export class StalePRWatcher implements vscode.Disposable {
     }
 
     private resolvePollSeconds(): number {
-        const cfg = vscode.workspace.getConfiguration('adoMdReview');
+        const cfg = vscode.workspace.getConfiguration('markdownPrReview');
         const raw = cfg.get<number>('staleCommitPollSeconds', DEFAULT_POLL_SECONDS);
         const n = Number.isFinite(raw) ? Math.trunc(raw) : DEFAULT_POLL_SECONDS;
         return Math.min(MAX_POLL_SECONDS, Math.max(MIN_POLL_SECONDS, n));

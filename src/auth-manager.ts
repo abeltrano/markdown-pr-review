@@ -19,7 +19,7 @@ const ADO_RESOURCE_ID = '499b84ac-1321-427f-aa17-267ca6975798';
 const ADO_DEFAULT_SCOPE = `${ADO_RESOURCE_ID}/.default`;
 
 // Secret storage key for PAT fallback (TASK-007 RISK-003 mitigation).
-const PAT_SECRET_KEY = 'adoMdReview.pat';
+const PAT_SECRET_KEY = 'markdownPrReview.pat';
 
 export interface AuthManager {
     getToken(options?: { silent?: boolean }): Promise<string>;
