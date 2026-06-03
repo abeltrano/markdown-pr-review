@@ -153,8 +153,21 @@ export class SessionManager {
         try {
             // Phase 1: render the head markdown without diff bars and post
             // init so the user sees rendered content the moment head arrives.
+            const headStartedAt = Date.now();
             const headMarkdown = await headPromise;
+            this.log.info('Head markdown fetched.', {
+                filePath,
+                ms: Date.now() - headStartedAt,
+                markdownChars: headMarkdown.length
+            });
+            const renderStartedAt = Date.now();
             const initRender = renderMarkdown({ markdown: headMarkdown, diffAnnotations: [] });
+            this.log.info('Initial render complete.', {
+                filePath,
+                ms: Date.now() - renderStartedAt,
+                htmlChars: initRender.html.length,
+                sourceMapEntries: initRender.sourceMap.length
+            });
             const initPayload: RenderedViewInitPayload = {
                 sessionId: session.id,
                 filePath,
@@ -175,14 +188,21 @@ export class SessionManager {
                 type: 'init',
                 payload: initPayload
             } satisfies HostToRenderedView);
+            this.log.info('Init posted to webview.', { filePath });
 
             // Phase 2: once the base markdown is available, compute diff
             // annotations and re-render with gutter bars applied. Sent as
             // a 'diffApplied' message so the webview only swaps innerHTML.
             const baseMarkdown = await basePromise;
-            if (baseMarkdown == null) return;
+            if (baseMarkdown == null) {
+                this.log.info('No base content; skipping diff annotations.', { filePath });
+                return;
+            }
             const diffAnnotations = annotateBlockDiff(headMarkdown, baseMarkdown);
-            if (diffAnnotations.length === 0) return;
+            if (diffAnnotations.length === 0) {
+                this.log.info('No diff annotations produced.', { filePath });
+                return;
+            }
             const diffRender = renderMarkdown({ markdown: headMarkdown, diffAnnotations });
             await panel.webview.postMessage({
                 type: 'diffApplied',
@@ -192,6 +212,10 @@ export class SessionManager {
                     diffAnnotations
                 }
             } satisfies HostToRenderedView);
+            this.log.info('Diff applied to webview.', {
+                filePath,
+                annotations: diffAnnotations.length
+            });
         } catch (err) {
             this.log.error('Failed to render rendered view', {
                 filePath,
