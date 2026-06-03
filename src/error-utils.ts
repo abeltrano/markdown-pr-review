@@ -12,11 +12,11 @@
 import * as vscode from 'vscode';
 import { getLogger } from './logger';
 import {
-    classifyError,
-    ERROR_CODES,
-    toErrorPayload,
-    type ClassifiedError,
-    type ErrorCode
+ classifyError,
+ ERROR_CODES,
+ toErrorPayload,
+ type ClassifiedError,
+ type ErrorCode
 } from './error-classification';
 
 export { classifyError, toErrorPayload, ERROR_CODES };
@@ -26,19 +26,19 @@ const log = getLogger('ErrorUtils');
 const OUTPUT_ACTION = 'Open Output';
 
 export async function surfaceError(
-    err: unknown,
-    context: string
+ err: unknown,
+ context: string
 ): Promise<ClassifiedError> {
-    const cls = classifyError(err);
-    log.error(`${context} failed [${cls.code}]: ${cls.message}`, {
-        error: err instanceof Error ? err.stack ?? err.message : String(err)
-    });
-    const choice = await vscode.window.showErrorMessage(
-        `${context} (${cls.code}): ${cls.message}`,
-        OUTPUT_ACTION
-    );
-    if (choice === OUTPUT_ACTION) {
-        log.channel.show(true);
-    }
-    return cls;
+ const cls = classifyError(err);
+ log.error(`${context} failed [${cls.code}]: ${cls.message}`, {
+  error: err instanceof Error ? err.stack ?? err.message : String(err)
+ });
+ const choice = await vscode.window.showErrorMessage(
+  `${context} (${cls.code}): ${cls.message}`,
+  OUTPUT_ACTION
+ );
+ if (choice === OUTPUT_ACTION) {
+  log.channel.show(true);
+ }
+ return cls;
 }

@@ -6,7 +6,7 @@ applyTo: '**/*.ts,**/*.tsx'
 
 ## Formatting
 
-- 4-space indent, spaces only (no tabs), LF line endings.
+- 2-space indent, spaces only (no tabs), LF line endings.
 - Single quotes for strings; backticks only for template literals or
   embedded `'`. Reserve double quotes for JSON-shaped contexts.
 - Always terminate statements with semicolons.

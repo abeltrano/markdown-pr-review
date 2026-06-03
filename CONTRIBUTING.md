@@ -73,7 +73,7 @@ For a deeper architectural tour, read [`docs/design.md`](docs/design.md).
 
 ## Coding style
 
-- **EditorConfig** drives whitespace (4-space TS/JS, LF line endings).
+- **EditorConfig** drives whitespace (2-space indent, LF line endings).
 - **ESLint** is the source of truth for code style; CI fails on any
   warning. Run `npm run lint -- --fix` to auto-fix what's auto-fixable.
 - Prefer **named exports** over default exports.

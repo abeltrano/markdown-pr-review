@@ -18,211 +18,211 @@ import type { CommentThreadDecorationProvider } from './file-decoration-provider
 const NON_MARKDOWN_INFO_COMMAND = 'markdownPrReview.showNonMarkdownInfo';
 
 export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
-    private readonly _onDidChangeTreeData = new vscode.EventEmitter<
-        FileNode | undefined | void
-    >();
-    readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
-    private readonly infoCommand: vscode.Disposable;
+ private readonly _onDidChangeTreeData = new vscode.EventEmitter<
+  FileNode | undefined | void
+ >();
+ readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+ private readonly infoCommand: vscode.Disposable;
 
-    constructor(
-        private readonly sessionManager: SessionManager,
-        private readonly decorationProvider: CommentThreadDecorationProvider
-    ) {
-        sessionManager.onSessionChanged(() => this.refresh());
-        sessionManager.onThreadsChanged(() => this.refresh());
-        this.infoCommand = vscode.commands.registerCommand(
-            NON_MARKDOWN_INFO_COMMAND,
-            (filePath: string) => {
-                void vscode.window.showInformationMessage(
-                    `"${filePath}" is not a markdown file. Open it in the ADO web UI instead.`
-                );
-            }
-        );
-    }
+ constructor(
+  private readonly sessionManager: SessionManager,
+  private readonly decorationProvider: CommentThreadDecorationProvider
+ ) {
+  sessionManager.onSessionChanged(() => this.refresh());
+  sessionManager.onThreadsChanged(() => this.refresh());
+  this.infoCommand = vscode.commands.registerCommand(
+   NON_MARKDOWN_INFO_COMMAND,
+   (filePath: string) => {
+    void vscode.window.showInformationMessage(
+     `"${filePath}" is not a markdown file. Open it in the ADO web UI instead.`
+    );
+   }
+  );
+ }
 
-    dispose(): void {
-        this.infoCommand.dispose();
-    }
+ dispose(): void {
+  this.infoCommand.dispose();
+ }
 
-    refresh(): void {
-        this.updateDecorations();
-        this._onDidChangeTreeData.fire();
-    }
+ refresh(): void {
+  this.updateDecorations();
+  this._onDidChangeTreeData.fire();
+ }
 
-    private updateDecorations(): void {
-        const session = this.sessionManager.getActiveSession();
-        const next = new Map<string, { count: number; tooltip: string }>();
-        if (session) {
-            for (const f of session.files) {
-                if (!f.isMarkdown) continue;
-                const count = countUnresolvedThreads(session.threads, f.filePath);
-                if (count <= 0) continue;
-                const key = buildResourceUri(f.filePath).toString();
-                next.set(key, {
-                    count,
-                    tooltip: `${count} unresolved comment thread${count === 1 ? '' : 's'}`
-                });
-            }
-        }
-        this.decorationProvider.setDecorations(next);
-    }
+ private updateDecorations(): void {
+  const session = this.sessionManager.getActiveSession();
+  const next = new Map<string, { count: number; tooltip: string }>();
+  if (session) {
+   for (const f of session.files) {
+    if (!f.isMarkdown) continue;
+    const count = countUnresolvedThreads(session.threads, f.filePath);
+    if (count <= 0) continue;
+    const key = buildResourceUri(f.filePath).toString();
+    next.set(key, {
+     count,
+     tooltip: `${count} unresolved comment thread${count === 1 ? '' : 's'}`
+    });
+   }
+  }
+  this.decorationProvider.setDecorations(next);
+ }
 
-    getTreeItem(node: FileNode): vscode.TreeItem {
-        if (node.kind === 'message') {
-            const item = new vscode.TreeItem(
-                node.label,
-                vscode.TreeItemCollapsibleState.None
-            );
-            item.tooltip = node.tooltip;
-            return item;
-        }
-        if (node.kind === 'directory') {
-            const collapsed = node.startExpanded
-                ? vscode.TreeItemCollapsibleState.Expanded
-                : vscode.TreeItemCollapsibleState.Collapsed;
-            const item = new vscode.TreeItem(node.label, collapsed);
-            item.iconPath = new vscode.ThemeIcon('folder');
-            item.description = `${node.markdownCount} md, ${node.totalCount} total`;
-            item.tooltip = node.label;
-            return item;
-        }
-        const item = new vscode.TreeItem(
-            node.label,
-            vscode.TreeItemCollapsibleState.None
-        );
-        const file = node.file;
-        const threadCount = node.unresolvedThreads;
-        item.tooltip = `${file.filePath} (${file.changeType})`;
-        if (threadCount > 0) {
-            item.tooltip += `\n${threadCount} unresolved comment thread${threadCount === 1 ? '' : 's'}`;
-        }
-        item.resourceUri = buildResourceUri(file.filePath);
-        if (!file.isMarkdown) {
-            item.iconPath = new vscode.ThemeIcon('circle-slash');
-            item.tooltip += '\n(not a markdown file — click for info)';
-            item.command = {
-                command: NON_MARKDOWN_INFO_COMMAND,
-                title: 'Show file info',
-                arguments: [file.filePath]
-            };
-            return item;
-        }
-        // Files with unresolved threads use the same comment-discussion
-        // codicon shown on each in-document thread marker; this keeps the
-        // visual language consistent between the tree and the rendered
-        // view. The unresolved count is rendered as a trailing badge by
-        // CommentThreadDecorationProvider.
-        item.iconPath = new vscode.ThemeIcon(
-            threadCount > 0 ? 'comment-discussion' : 'markdown'
-        );
-        const session = this.sessionManager.getActiveSession();
-        if (session) {
-            const uri = buildMdprUri(
-                { ...session.pr.ref, repositoryId: session.pr.ref.repositoryId },
-                file.filePath
-            );
-            item.command = {
-                command: 'vscode.openWith',
-                title: 'Open in Rendered View',
-                arguments: [uri, 'markdownPrReview.renderedView']
-            };
-        }
-        return item;
-    }
+ getTreeItem(node: FileNode): vscode.TreeItem {
+  if (node.kind === 'message') {
+   const item = new vscode.TreeItem(
+    node.label,
+    vscode.TreeItemCollapsibleState.None
+   );
+   item.tooltip = node.tooltip;
+   return item;
+  }
+  if (node.kind === 'directory') {
+   const collapsed = node.startExpanded
+    ? vscode.TreeItemCollapsibleState.Expanded
+    : vscode.TreeItemCollapsibleState.Collapsed;
+   const item = new vscode.TreeItem(node.label, collapsed);
+   item.iconPath = new vscode.ThemeIcon('folder');
+   item.description = `${node.markdownCount} md, ${node.totalCount} total`;
+   item.tooltip = node.label;
+   return item;
+  }
+  const item = new vscode.TreeItem(
+   node.label,
+   vscode.TreeItemCollapsibleState.None
+  );
+  const file = node.file;
+  const threadCount = node.unresolvedThreads;
+  item.tooltip = `${file.filePath} (${file.changeType})`;
+  if (threadCount > 0) {
+   item.tooltip += `\n${threadCount} unresolved comment thread${threadCount === 1 ? '' : 's'}`;
+  }
+  item.resourceUri = buildResourceUri(file.filePath);
+  if (!file.isMarkdown) {
+   item.iconPath = new vscode.ThemeIcon('circle-slash');
+   item.tooltip += '\n(not a markdown file — click for info)';
+   item.command = {
+    command: NON_MARKDOWN_INFO_COMMAND,
+    title: 'Show file info',
+    arguments: [file.filePath]
+   };
+   return item;
+  }
+  // Files with unresolved threads use the same comment-discussion
+  // codicon shown on each in-document thread marker; this keeps the
+  // visual language consistent between the tree and the rendered
+  // view. The unresolved count is rendered as a trailing badge by
+  // CommentThreadDecorationProvider.
+  item.iconPath = new vscode.ThemeIcon(
+   threadCount > 0 ? 'comment-discussion' : 'markdown'
+  );
+  const session = this.sessionManager.getActiveSession();
+  if (session) {
+   const uri = buildMdprUri(
+    { ...session.pr.ref, repositoryId: session.pr.ref.repositoryId },
+    file.filePath
+   );
+   item.command = {
+    command: 'vscode.openWith',
+    title: 'Open in Rendered View',
+    arguments: [uri, 'markdownPrReview.renderedView']
+   };
+  }
+  return item;
+ }
 
-    getChildren(node?: FileNode): FileNode[] {
-        const session = this.sessionManager.getActiveSession();
-        if (!session) {
-            return [
-                {
-                    kind: 'message',
-                    label: 'No active PR. Run "Markdown PR Review: Open Pull Request…" to start.',
-                    tooltip: 'Press Ctrl+Shift+P and run the command.'
-                }
-            ];
-        }
-        if (!node) {
-            return groupFilesByDirectory(session.files, session.threads);
-        }
-        if (node.kind === 'directory') {
-            return node.children;
-        }
-        return [];
+ getChildren(node?: FileNode): FileNode[] {
+  const session = this.sessionManager.getActiveSession();
+  if (!session) {
+   return [
+    {
+     kind: 'message',
+     label: 'No active PR. Run "Markdown PR Review: Open Pull Request…" to start.',
+     tooltip: 'Press Ctrl+Shift+P and run the command.'
     }
+   ];
+  }
+  if (!node) {
+   return groupFilesByDirectory(session.files, session.threads);
+  }
+  if (node.kind === 'directory') {
+   return node.children;
+  }
+  return [];
+ }
 }
 
 function countUnresolvedThreads(threads: Thread[], filePath: string): number {
-    return threads.filter(
-        t =>
-            t.threadContext?.filePath === filePath &&
-            t.status !== 'fixed' &&
-            t.status !== 'closed' &&
-            t.status !== 'byDesign' &&
-            t.status !== 'wontFix'
-    ).length;
+ return threads.filter(
+  t =>
+   t.threadContext?.filePath === filePath &&
+   t.status !== 'fixed' &&
+   t.status !== 'closed' &&
+   t.status !== 'byDesign' &&
+   t.status !== 'wontFix'
+ ).length;
 }
 
 function groupFilesByDirectory(
-    files: ChangedFile[],
-    threads: Thread[]
+ files: ChangedFile[],
+ threads: Thread[]
 ): FileNode[] {
-    // Group by parent directory. Files at the repo root land in "/".
-    const buckets = new Map<string, ChangedFile[]>();
-    for (const f of files) {
-        const dir = parentDir(f.filePath);
-        const arr = buckets.get(dir) ?? [];
-        arr.push(f);
-        buckets.set(dir, arr);
-    }
+ // Group by parent directory. Files at the repo root land in "/".
+ const buckets = new Map<string, ChangedFile[]>();
+ for (const f of files) {
+  const dir = parentDir(f.filePath);
+  const arr = buckets.get(dir) ?? [];
+  arr.push(f);
+  buckets.set(dir, arr);
+ }
 
-    // Sort directories alphabetically; "/" (root) first.
-    const sortedDirs = Array.from(buckets.keys()).sort((a, b) => {
-        if (a === '/') return -1;
-        if (b === '/') return 1;
-        return a.localeCompare(b);
-    });
+ // Sort directories alphabetically; "/" (root) first.
+ const sortedDirs = Array.from(buckets.keys()).sort((a, b) => {
+  if (a === '/') return -1;
+  if (b === '/') return 1;
+  return a.localeCompare(b);
+ });
 
-    // If only one directory contains everything, skip the directory wrapper.
-    if (sortedDirs.length === 1) {
-        return makeFileNodes(buckets.get(sortedDirs[0]!) ?? [], threads);
-    }
+ // If only one directory contains everything, skip the directory wrapper.
+ if (sortedDirs.length === 1) {
+  return makeFileNodes(buckets.get(sortedDirs[0]!) ?? [], threads);
+ }
 
-    return sortedDirs.map((dir): FileNode => {
-        const filesInDir = buckets.get(dir) ?? [];
-        const children = makeFileNodes(filesInDir, threads);
-        const markdownCount = filesInDir.filter(f => f.isMarkdown).length;
-        return {
-            kind: 'directory',
-            label: dir,
-            children,
-            markdownCount,
-            totalCount: filesInDir.length,
-            startExpanded: markdownCount > 0
-        };
-    });
+ return sortedDirs.map((dir): FileNode => {
+  const filesInDir = buckets.get(dir) ?? [];
+  const children = makeFileNodes(filesInDir, threads);
+  const markdownCount = filesInDir.filter(f => f.isMarkdown).length;
+  return {
+   kind: 'directory',
+   label: dir,
+   children,
+   markdownCount,
+   totalCount: filesInDir.length,
+   startExpanded: markdownCount > 0
+  };
+ });
 }
 
 function makeFileNodes(files: ChangedFile[], threads: Thread[]): FileNode[] {
-    const sorted = [...files].sort((a, b) =>
-        a.filePath.localeCompare(b.filePath)
-    );
-    return sorted.map((file): FileNode => ({
-        kind: 'file',
-        label: basename(file.filePath),
-        file,
-        unresolvedThreads: countUnresolvedThreads(threads, file.filePath)
-    }));
+ const sorted = [...files].sort((a, b) =>
+  a.filePath.localeCompare(b.filePath)
+ );
+ return sorted.map((file): FileNode => ({
+  kind: 'file',
+  label: basename(file.filePath),
+  file,
+  unresolvedThreads: countUnresolvedThreads(threads, file.filePath)
+ }));
 }
 
 function parentDir(filePath: string): string {
-    const idx = filePath.lastIndexOf('/');
-    if (idx <= 0) return '/';
-    return filePath.slice(0, idx);
+ const idx = filePath.lastIndexOf('/');
+ if (idx <= 0) return '/';
+ return filePath.slice(0, idx);
 }
 
 function basename(filePath: string): string {
-    const idx = filePath.lastIndexOf('/');
-    return idx < 0 ? filePath : filePath.slice(idx + 1);
+ const idx = filePath.lastIndexOf('/');
+ return idx < 0 ? filePath : filePath.slice(idx + 1);
 }
 
 // Build the resourceUri used both as the TreeItem's resourceUri and as
@@ -230,25 +230,25 @@ function basename(filePath: string): string {
 // with the PR-relative path; these synthetic URIs don't collide with any
 // real workspace files because the PR repo isn't checked out locally.
 function buildResourceUri(filePath: string): vscode.Uri {
-    return vscode.Uri.from({
-        scheme: 'file',
-        path: '/' + filePath.replace(/^\/+/, '')
-    });
+ return vscode.Uri.from({
+  scheme: 'file',
+  path: '/' + filePath.replace(/^\/+/, '')
+ });
 }
 
 export type FileNode =
-    | {
-          kind: 'file';
-          label: string;
-          file: ChangedFile;
-          unresolvedThreads: number;
-      }
-    | {
-          kind: 'directory';
-          label: string;
-          children: FileNode[];
-          markdownCount: number;
-          totalCount: number;
-          startExpanded: boolean;
-      }
-    | { kind: 'message'; label: string; tooltip: string };
+ | {
+  kind: 'file';
+  label: string;
+  file: ChangedFile;
+  unresolvedThreads: number;
+ }
+ | {
+  kind: 'directory';
+  label: string;
+  children: FileNode[];
+  markdownCount: number;
+  totalCount: number;
+  startExpanded: boolean;
+ }
+ | { kind: 'message'; label: string; tooltip: string };

@@ -12,41 +12,41 @@ import { getLogger } from '../logger';
 import type { SessionManager } from '../session-manager';
 
 interface AdoMdDocument extends vscode.CustomDocument {
-    readonly uri: vscode.Uri;
-    dispose(): void;
+ readonly uri: vscode.Uri;
+ dispose(): void;
 }
 
 export class RenderedViewEditorProvider implements vscode.CustomReadonlyEditorProvider<AdoMdDocument> {
-    public static readonly viewType = 'markdownPrReview.renderedView';
+ public static readonly viewType = 'markdownPrReview.renderedView';
 
-    private readonly log = getLogger('CustomEditorProvider');
+ private readonly log = getLogger('CustomEditorProvider');
 
-    constructor(
-        private readonly context: vscode.ExtensionContext,
-        private readonly sessionManager: SessionManager
-    ) {}
+ constructor(
+  private readonly context: vscode.ExtensionContext,
+  private readonly sessionManager: SessionManager
+ ) {}
 
-    openCustomDocument(uri: vscode.Uri): AdoMdDocument {
-        this.log.info('openCustomDocument', { uri: uri.toString() });
-        return {
-            uri,
-            dispose: () => {}
-        };
-    }
+ openCustomDocument(uri: vscode.Uri): AdoMdDocument {
+  this.log.info('openCustomDocument', { uri: uri.toString() });
+  return {
+   uri,
+   dispose: () => {}
+  };
+ }
 
-    async resolveCustomEditor(
-        document: AdoMdDocument,
-        webviewPanel: vscode.WebviewPanel,
-        _token: vscode.CancellationToken
-    ): Promise<void> {
-        this.log.info('resolveCustomEditor', { uri: document.uri.toString() });
+ async resolveCustomEditor(
+  document: AdoMdDocument,
+  webviewPanel: vscode.WebviewPanel,
+  _token: vscode.CancellationToken
+ ): Promise<void> {
+  this.log.info('resolveCustomEditor', { uri: document.uri.toString() });
 
-        const distRoot = vscode.Uri.joinPath(this.context.extensionUri, 'out');
-        webviewPanel.webview.options = {
-            enableScripts: true,
-            localResourceRoots: [distRoot]
-        };
+  const distRoot = vscode.Uri.joinPath(this.context.extensionUri, 'out');
+  webviewPanel.webview.options = {
+   enableScripts: true,
+   localResourceRoots: [distRoot]
+  };
 
-        await this.sessionManager.attachRenderedView(document.uri, webviewPanel);
-    }
+  await this.sessionManager.attachRenderedView(document.uri, webviewPanel);
+ }
 }

@@ -11,7 +11,7 @@ hand-edit anything under `out/`.
 
 ## Formatting
 
-- 4-space indent, spaces only (no tabs), LF line endings.
+- 2-space indent, spaces only (no tabs), LF line endings.
 - Single quotes for strings; backticks only for template literals.
 - Always terminate statements with semicolons.
 - Trailing newline at end of file. No leading/trailing blank lines.

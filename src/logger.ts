@@ -12,9 +12,9 @@
 
 import * as vscode from 'vscode';
 import {
-    JWT_LIKE_REGEX,
-    redactAuthHeaders,
-    redactJwtsAndUrlTokens
+ JWT_LIKE_REGEX,
+ redactAuthHeaders,
+ redactJwtsAndUrlTokens
 } from './redact';
 
 // Re-export for callers (and unit tests) that already pull from logger.
@@ -26,78 +26,78 @@ const CHANNEL_LANGUAGE_ID = 'log';
 export type LogLevel = 'info' | 'warn' | 'error';
 
 export interface Logger {
-    info(message: string, context?: unknown): void;
-    warn(message: string, context?: unknown): void;
-    error(message: string, context?: unknown): void;
-    /** For tests / explicit disposal */
-    dispose(): void;
-    /** Expose the channel so callers can offer "Open Output" actions */
-    readonly channel: vscode.OutputChannel;
+ info(message: string, context?: unknown): void;
+ warn(message: string, context?: unknown): void;
+ error(message: string, context?: unknown): void;
+ /** For tests / explicit disposal */
+ dispose(): void;
+ /** Expose the channel so callers can offer "Open Output" actions */
+ readonly channel: vscode.OutputChannel;
 }
 
 export class OutputChannelLogger implements Logger {
-    readonly channel: vscode.OutputChannel;
-    private readonly component: string;
+ readonly channel: vscode.OutputChannel;
+ private readonly component: string;
 
-    constructor(component: string, channel?: vscode.OutputChannel) {
-        this.component = component;
-        this.channel = channel ?? vscode.window.createOutputChannel(CHANNEL_NAME, CHANNEL_LANGUAGE_ID);
-    }
+ constructor(component: string, channel?: vscode.OutputChannel) {
+  this.component = component;
+  this.channel = channel ?? vscode.window.createOutputChannel(CHANNEL_NAME, CHANNEL_LANGUAGE_ID);
+ }
 
-    info(message: string, context?: unknown): void {
-        this.write('info', message, context);
-    }
+ info(message: string, context?: unknown): void {
+  this.write('info', message, context);
+ }
 
-    warn(message: string, context?: unknown): void {
-        this.write('warn', message, context);
-    }
+ warn(message: string, context?: unknown): void {
+  this.write('warn', message, context);
+ }
 
-    error(message: string, context?: unknown): void {
-        this.write('error', message, context);
-    }
+ error(message: string, context?: unknown): void {
+  this.write('error', message, context);
+ }
 
-    dispose(): void {
-        this.channel.dispose();
-    }
+ dispose(): void {
+  this.channel.dispose();
+ }
 
-    /** Returns a logger sharing the same channel but tagged with a new component name. */
-    child(component: string): Logger {
-        return new OutputChannelLogger(component, this.channel);
-    }
+ /** Returns a logger sharing the same channel but tagged with a new component name. */
+ child(component: string): Logger {
+  return new OutputChannelLogger(component, this.channel);
+ }
 
-    private write(level: LogLevel, message: string, context?: unknown): void {
-        const timestamp = new Date().toISOString();
-        const safeMessage = redactJwtsAndUrlTokens(String(message));
-        // Format matches the 'log' grammar's expectations: bare ISO
-        // timestamp at line start, lowercase level in brackets, bracketed
-        // source, then message. Tokens get colored by the grammar.
-        let line = `${timestamp} [${level}] [${this.component}] ${safeMessage}`;
-        if (context !== undefined) {
-            const safeContext = redactAuthHeaders(context);
-            try {
-                line += ' ' + JSON.stringify(safeContext);
-            } catch {
-                line += ' [unserializable context]';
-            }
-        }
-        this.channel.appendLine(line);
-    }
+ private write(level: LogLevel, message: string, context?: unknown): void {
+  const timestamp = new Date().toISOString();
+  const safeMessage = redactJwtsAndUrlTokens(String(message));
+  // Format matches the 'log' grammar's expectations: bare ISO
+  // timestamp at line start, lowercase level in brackets, bracketed
+  // source, then message. Tokens get colored by the grammar.
+  let line = `${timestamp} [${level}] [${this.component}] ${safeMessage}`;
+  if (context !== undefined) {
+   const safeContext = redactAuthHeaders(context);
+   try {
+    line += ' ' + JSON.stringify(safeContext);
+   } catch {
+    line += ' [unserializable context]';
+   }
+  }
+  this.channel.appendLine(line);
+ }
 }
 
 let sharedChannel: vscode.OutputChannel | undefined;
 
 /** Returns a logger sharing the singleton output channel. Test-friendly. */
 export function getLogger(component: string): Logger {
-    if (!sharedChannel) {
-        sharedChannel = vscode.window.createOutputChannel(CHANNEL_NAME, CHANNEL_LANGUAGE_ID);
-    }
-    return new OutputChannelLogger(component, sharedChannel);
+ if (!sharedChannel) {
+  sharedChannel = vscode.window.createOutputChannel(CHANNEL_NAME, CHANNEL_LANGUAGE_ID);
+ }
+ return new OutputChannelLogger(component, sharedChannel);
 }
 
 /** Test seam: lets unit tests reset the singleton between cases. */
 export function resetLoggerForTests(): void {
-    sharedChannel?.dispose();
-    sharedChannel = undefined;
+ sharedChannel?.dispose();
+ sharedChannel = undefined;
 }
 
 // Silence the unused-import diagnostic when the bundler tree-shakes the

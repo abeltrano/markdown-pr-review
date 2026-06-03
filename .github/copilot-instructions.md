@@ -133,7 +133,7 @@ a migration plan for the live-restyle feature.
 
 ## Code conventions
 
-- **4-space indent**, **LF** line endings (enforced by EditorConfig).
+- **2-space indent**, **LF** line endings (enforced by EditorConfig).
 - **ESLint flat config** (`eslint.config.mjs`) is the style source of
   truth. CI fails on any warning. `npm run lint -- --fix` for
   auto-fixes.

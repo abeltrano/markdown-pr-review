@@ -16,12 +16,12 @@ import { applySourceLineAttributes } from './source-line-attributes';
 import { applyMermaidFenceRule } from './mermaid-fence-rule';
 
 export function createMarkdownIt(): MarkdownIt {
-    const md = new MarkdownIt({
-        html: false,
-        linkify: true,
-        breaks: false
-    });
-    applyMermaidFenceRule(md);
-    applySourceLineAttributes(md);
-    return md;
+ const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: false
+ });
+ applyMermaidFenceRule(md);
+ applySourceLineAttributes(md);
+ return md;
 }
