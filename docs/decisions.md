@@ -483,3 +483,26 @@ rationale, and links back to the relevant requirement / open question.
   also set; the cross-link makes that explicit).
 - **REQ/OQ**: REQ-UX-002.
 
+
+---
+
+## D-029 (2026-06-03 02:00 PT) — Ship .vsix in repo root, version bump to 0.4.0
+
+- **Context**: TASK-040. The implementation plan calls for saving
+  ``ado-markdown-pr-reviewer-0.4.0.vsix`` to the repo root and
+  committing it so users can download and sideload without a
+  separate release pipeline.
+- **Decision**: Bump ``package.json`` version 0.1.0 -> 0.4.0 to match
+  the v0.4 capability set. Force-add the .vsix despite the
+  ``*.vsix`` gitignore rule (the rule still applies to development
+  artifacts; the released VSIX is committed manually). Use ``vsce
+  package --no-yarn --allow-missing-repository --skip-license`` since
+  this is a personal-use extension without a publisher repository
+  field and the LICENSE file is auto-bundled by name match.
+- **Rationale**: A single-reviewer tool benefits from being able to
+  ``code --install-extension .\ado-markdown-pr-reviewer-0.4.0.vsix``
+  straight from a fresh clone. The marginal repo size (3.4 MB) is
+  acceptable given the dependency on mermaid in the rendered-view
+  bundle.
+- **REQ/OQ**: ASM-008.
+
