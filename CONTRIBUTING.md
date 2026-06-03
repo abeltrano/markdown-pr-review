@@ -69,17 +69,37 @@ docs/
 └── validation-plan.md
 ```
 
-For a deeper architectural tour, read [`docs/design.md`](docs/design.md).
+For a deeper tour of the codebase, read:
+
+- [`docs/development.md`](docs/development.md) — day-to-day developer
+  guide: build pipeline, runtime architecture, webview/postMessage
+  protocol, selection mapper, diff annotator, auth, logging, CSP,
+  ADO quirks, and "things that have bitten this codebase".
+- [`docs/design.md`](docs/design.md) — formal product design (the
+  architecture-of-record with REQ-IDs and mermaid diagrams).
+- [`docs/requirements.md`](docs/requirements.md) and
+  [`docs/validation-plan.md`](docs/validation-plan.md) — the spec
+  surface that derives those REQ-IDs.
 
 ## Coding style
 
-- **EditorConfig** drives whitespace (2-space indent, LF line endings).
-- **ESLint** is the source of truth for code style; CI fails on any
-  warning. Run `npm run lint -- --fix` to auto-fix what's auto-fixable.
-- Prefer **named exports** over default exports.
-- Prefer **`async`/`await`** over raw promise chains.
-- Never write `void someAsync()` without a leading comment explaining
-  why the rejection is genuinely safe to ignore.
+Full per-language rules live in
+[`docs/coding-style.md`](docs/coding-style.md). That document is the
+single source of truth; the files in `.github/instructions/` are
+thin pointers that scope the same rules to specific globs so VS
+Code Copilot applies them correctly.
+
+At a glance:
+
+- **EditorConfig** drives whitespace (2-space indent, LF line
+  endings).
+- **ESLint** is the source of truth for TS/JS style; CI fails on
+  any warning. Run `npm run lint -- --fix` to auto-fix what's
+  auto-fixable.
+- Prefer **named exports** over default exports, and
+  **`async`/`await`** over raw promise chains.
+- Never write `void someAsync()` without a leading comment
+  explaining why the rejection is genuinely safe to ignore.
 - Never log secret-bearing strings directly — route through
   `redact()` in `src/redact.ts`.
 
