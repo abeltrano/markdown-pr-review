@@ -8,6 +8,33 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.4.16] - 2026-06-03
+
+### Fixed
+- Mermaid diagrams now render again. The carrier that holds the diagram
+  source has been switched from `<script type="text/x-mermaid">` to a
+  `data-mermaid-source` attribute on the wrapper `<div class="mermaid">`.
+  The `<script>` carrier was silently stripped by DOMPurify (introduced
+  as defense-in-depth in 0.4.15 by the CodeQL hardening pass) because
+  `<script>` is not in DOMPurify's safe-tag list, leaving the diagram
+  source visible as plain text instead of rendering as a diagram. Data
+  attributes are inert and pass the sanitizer unchanged.
+- Mermaid SVG output is no longer over-sanitized. `foreignObject` (used
+  by mermaid flowcharts to host HTML labels, including multi-line labels
+  with `<br/>`) is now allowed in the SVG sanitizer profile; `<script>`
+  and inline event handler attributes (`onload`, `onclick`, `onerror`,
+  `onmouseover`, `onfocus`, `onblur`) remain forbidden so a malicious
+  diagram source cannot inject executable content via a label.
+- Body text color is now applied at the `body` selector rather than
+  `article#content`, matching VS Code's built-in markdown preview. With
+  the previous, more-specific selector, a user's `markdown.styles` entry
+  that targeted `body { color: ... }` could not cascade into the article
+  — so the article fell back to `var(--vscode-editor-foreground)`, which
+  on themes that intentionally mute editor text appeared faded against
+  the prose. The new rule also switches the default to
+  `var(--vscode-foreground)` (general UI foreground), which is the
+  variable the built-in markdown preview itself uses for body text.
+
 ### Security
 - Hardened webview `innerHTML` assignments against the entire CodeQL
   `js/xss`, `js/xss-through-dom`, and `js/client-side-unvalidated-url-redirection`
