@@ -174,7 +174,7 @@
     "@types/node": "^20.14.0",
     "@types/vscode": "^1.85.0",
     "@vscode/codicons": "^0.0.45",
-    "@vscode/vsce": "^2.32.0",
+    "@vscode/vsce": "^3.9.2",
     "chai": "^4.5.0",
     "esbuild": "^0.25.0",
     "eslint": "^9.0.0",
