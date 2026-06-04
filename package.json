@@ -191,7 +191,7 @@
     "@vscode/codicons": "^0.0.45",
     "@vscode/vsce": "^3.9.2",
     "chai": "^6.2.2",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.0",
     "eslint": "^10.4.1",
     "git-cliff": "^2.13.1",
     "mocha": "^11.7.6",
