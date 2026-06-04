@@ -1,5 +1,12 @@
 # Lint + type-check + test on every push to main and every PR.
 # Runs on Node 20 to match package.json engines.node and the local dev env.
+# The build job runs on a matrix of ubuntu-latest, macos-latest, and
+# windows-latest so platform-specific regressions (path separators, EOL
+# handling, file-watcher behaviour, SecretStorage backends) are caught
+# in CI rather than after a marketplace install. The summary job at the
+# bottom carries the stable `lint + build + test` name that branch
+# protection requires, so adding or removing matrix entries does not
+# require a branch-protection edit.
 name: CI
 
 on:
@@ -18,8 +25,12 @@ permissions:
 
 jobs:
   build:
-    name: lint + build + test
-    runs-on: ubuntu-latest
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -41,3 +52,21 @@ jobs:
 
       - name: Test (mocha)
         run: npm test
+
+  # Single status-check name that aggregates the matrix. Keep this exact
+  # string ("lint + build + test") — it is the required status check on
+  # main's branch-protection rule, so renaming or removing it would block
+  # all PR auto-merges until protection is updated.
+  ci:
+    name: lint + build + test
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+    steps:
+      - name: Fail if any matrix entry failed
+        if: needs.build.result != 'success'
+        run: |
+          echo "One or more matrix entries failed (result: ${{ needs.build.result }})"
+          exit 1
+      - name: Report success
+        run: echo "All matrix entries passed."
