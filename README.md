@@ -21,14 +21,7 @@ README is launch-ready.
 > markdown view** — and create PR comment threads by selecting text
 > directly in the rendered content.
 
-<!--
-DEMO PLACEHOLDER:
-Replace this comment with an animated GIF or screenshot once captured.
-The marketplace listing renders the first ~600px of this README as the
-hero of the extension card, so the asset belongs at the top.
-Suggested filename: media/demo.gif (or media/screenshot.png).
-Wire as: `![Demo: rendered markdown PR review with inline comments](media/demo.gif)`
--->
+![Demo: opening an Azure DevOps PR, selecting rendered markdown, posting a comment, and seeing the inline marker appear](media/demo.gif)
 
 Closes the regression introduced when teams migrated from Word-based
 design-doc review to PR-based review of markdown in source control,
