@@ -197,6 +197,7 @@ export interface RestylePayload {
  fontFamily: string;
  fontSize: number;
  lineHeight: number;
+ builtinStyleUris: string[];
  userStyleUris: string[];
 }
 

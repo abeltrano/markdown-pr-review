@@ -188,6 +188,36 @@ function onRestyle(payload: RestylePayload): void {
  root.style.setProperty('--markdown-font-size', `${payload.fontSize}px`);
  root.style.setProperty('--markdown-line-height', String(payload.lineHeight));
  const head = document.head;
+ // Replace built-in markdown.css link(s). These live BEFORE the inline
+ // <style> block in source order so our overrides win, and we preserve
+ // that position by inserting the new ones at the same anchor: the
+ // first existing inline <style> element (which is our extension CSS).
+ const styleAnchor = head.querySelector('style');
+ head
+  .querySelectorAll('link[data-builtin-style="true"]')
+  .forEach((el) => el.remove());
+ for (const uri of payload.builtinStyleUris) {
+  let parsed: URL;
+  try {
+   parsed = new URL(uri);
+  } catch {
+   log('warn', 'Dropped malformed built-in stylesheet uri from restyle payload', uri);
+   continue;
+  }
+  if (parsed.protocol !== 'https:') {
+   log('warn', 'Dropped non-https built-in stylesheet uri from restyle payload', uri);
+   continue;
+  }
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.setAttribute('data-builtin-style', 'true');
+  link.href = parsed.href;
+  if (styleAnchor) {
+   head.insertBefore(link, styleAnchor);
+  } else {
+   head.appendChild(link);
+  }
+ }
  head
   .querySelectorAll('link[data-user-style="true"]')
   .forEach((el) => el.remove());
