@@ -34,17 +34,3 @@ export function sanitizeHtml(html: string): string {
 export function sanitizeSvg(svg: string): string {
  return DOMPurify.sanitize(svg, SVG_CONFIG);
 }
-
-// Stylesheet URIs delivered via host -> webview messages should only ever
-// be VS Code webview-resource URIs (which present as https://...) or
-// explicit https URLs. Drop anything else so that an attacker who
-// controls a message payload cannot inject `javascript:` or other
-// scriptable schemes through a <link href>.
-export function isSafeStylesheetUri(uri: string): boolean {
- try {
-  const url = new URL(uri);
-  return url.protocol === 'https:';
- } catch {
-  return false;
- }
-}
