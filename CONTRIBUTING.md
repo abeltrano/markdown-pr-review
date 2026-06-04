@@ -190,10 +190,10 @@ A typical change looks like:
 1. Branch from `main` (`git checkout -b feat/foo`).
 2. Make sure `npm run lint && npm run build && npm test` all pass
    locally before opening the PR.
-3. Update [`CHANGELOG.md`](CHANGELOG.md) under the `## [Unreleased]`
-   heading.
-4. Commit using [Conventional Commits](#commits).
-5. Run the PR helper:
+3. Commit using [Conventional Commits](#commits). The commit subject
+   becomes the squash-merge subject on `main` and the user-visible
+   release-note entry, so make it descriptive.
+4. Run the PR helper:
 
    ```powershell
    ./scripts/new-pr.ps1
@@ -203,11 +203,17 @@ A typical change looks like:
    (title and body come from the last commit), and enables squash
    auto-merge so the PR lands the moment CI is green. Pass `-Draft`
    to skip auto-merge.
-6. After the PR auto-merges, refresh `main`:
+5. After the PR auto-merges, refresh `main`:
 
    ```bash
    git checkout main && git pull && git branch -D <feature-branch>
    ```
+
+Release notes are derived from the squash-merge commit history on
+`main` (each PR becomes one Conventional-Commit entry), so no
+hand-maintained changelog file is kept in the repo. Use `git log
+--oneline vX.Y.Z..HEAD` or GitHub's auto-generated release notes when
+cutting a tag.
 
 Conversation threads opened on a PR must be resolved before the PR
 can merge. Squash-merging is the only enabled merge strategy, so

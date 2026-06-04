@@ -51,6 +51,7 @@ format: 'iife'
 
 async function run() {
 copyCodicons();
+copyCommentInputStyles();
 const builds = [hostBuild, renderedViewBuild, commentInputBuild];
 if (isWatch) {
  const contexts = await Promise.all(builds.map(b => esbuild.context(b)));
@@ -74,6 +75,18 @@ for (const f of ['codicon.css', 'codicon.ttf']) {
  fs.copyFileSync(path.join(srcDir, f), path.join(dstDir, f));
 }
 console.log('[esbuild] copied codicon.css + codicon.ttf to out/codicons/.');
+}
+
+// Copy the comment-input webview stylesheet into out/ so it can be loaded
+// via <link> (which keeps the comment-input CSP strict: style-src ${src}
+// without 'unsafe-inline'). esbuild's bundler only follows imports from
+// the TS entry point, so the CSS is copied here instead.
+function copyCommentInputStyles() {
+const srcFile = path.join('src', 'views', 'comment-input', 'styles.css');
+const dstFile = path.join('out', 'views', 'comment-input', 'styles.css');
+fs.mkdirSync(path.dirname(dstFile), { recursive: true });
+fs.copyFileSync(srcFile, dstFile);
+console.log('[esbuild] copied comment-input styles.css to out/views/comment-input/.');
 }
 
 run().catch(err => {
