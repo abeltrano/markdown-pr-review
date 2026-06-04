@@ -24,7 +24,6 @@
 - [ ] `npm run lint` is clean
 - [ ] `npm run build` succeeds
 - [ ] `npm test` passes
-- [ ] `CHANGELOG.md` updated under `## [Unreleased]`
 - [ ] New behavior is covered by a test (or rationale below)
 - [ ] No tokens, ADO organization names, or other sensitive strings in
       the diff
