@@ -3,6 +3,8 @@
 // via dynamic import so we don't need a separate <script>
 // tag at runtime.
 
+import { sanitizeSvg } from './sanitize';
+
 let mermaidModule: typeof import('mermaid') | undefined;
 let mermaidConfigured = false;
 
@@ -45,7 +47,7 @@ export async function initMermaid(opts: MermaidLoaderOptions): Promise<void> {
    try {
     const id = `mermaid-${i}-${Date.now().toString(36)}`;
     const { svg } = await mermaid.render(id, source);
-    container.innerHTML = svg;
+    container.innerHTML = sanitizeSvg(svg);
    } catch (err) {
     container.innerHTML =
      `<div class="mermaid-error">⚠ Mermaid render failed: ` +
