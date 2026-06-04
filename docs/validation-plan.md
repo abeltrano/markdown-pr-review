@@ -1165,7 +1165,7 @@ The project is "validation-complete for personal v1 release" when:
   consider hiding the feature behind a setting (off by default) if a fix is
   not available.
 * **Medium fail:** open a tracked work item; release allowed with a known
-  issue in the changelog.
+  issue documented in the release notes.
 * **Low fail:** record for future investigation.
 
 ---
