@@ -177,7 +177,8 @@
     "build": "tsc --noEmit && node esbuild.js --production",
     "lint": "eslint .",
     "package": "npm run build && vsce package --no-yarn",
-    "test": "mocha"
+    "test": "mocha",
+    "release:notes": "git-cliff --output CHANGELOG.md"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -192,6 +193,7 @@
     "chai": "^4.5.0",
     "esbuild": "^0.25.0",
     "eslint": "^10.4.1",
+    "git-cliff": "^2.13.1",
     "mocha": "^11.7.6",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
