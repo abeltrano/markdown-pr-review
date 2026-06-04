@@ -22,3 +22,7 @@ tsconfig.json
 # Marketplace icon regeneration source. The PNG is the wired asset;
 # the SVG lives in source control for regeneration but doesn't ship.
 media/marketplace.svg
+
+# Changelog tooling. The generated CHANGELOG.md *is* shipped (the
+# marketplace surfaces it as a tab); the generator config is not.
+cliff.toml
