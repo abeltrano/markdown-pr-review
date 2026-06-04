@@ -1,0 +1,83 @@
+[changelog]
+# A Tera template to be rendered for each release in the changelog.
+# See https://keats.github.io/tera/docs/#introduction
+header = """
+# Changelog
+
+All notable changes to the Markdown PR Review extension are documented
+here. This file is generated from the Conventional Commits in the
+[git history](https://github.com/abeltrano/markdown-pr-review/commits/main)
+via [git-cliff]. To regenerate after merging a PR or cutting a release,
+run `npm run release:notes` from the repository root.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+[git-cliff]: https://git-cliff.org
+
+"""
+body = """
+
+{% if version %}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | striptags | trim | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.scope %}*({{ commit.scope }})* {% endif %}\
+            {% if commit.breaking %}[**breaking**] {% endif %}\
+            {{ commit.message | split(pat="\n") | first | trim | upper_first }}\
+    {% endfor %}
+{% endfor %}
+"""
+trim = true
+render_always = true
+postprocessors = [
+    { pattern = '<REPO>', replace = "https://github.com/abeltrano/markdown-pr-review" },
+]
+
+[git]
+conventional_commits = true
+# Keep non-conventional commits visible in the "Other" bucket so the
+# pre-Conventional-Commits history from the project's scaffolding
+# phase still shows up in the generated CHANGELOG.
+filter_unconventional = false
+require_conventional = false
+split_commits = false
+commit_preprocessors = [
+    # Linkify "(#NNN)" PR references to the GitHub PR.
+    { pattern = '\(#([0-9]+)\)', replace = "([#${1}](<REPO>/pull/${1}))" },
+]
+protect_breaking_commits = true
+commit_parsers = [
+    { message = "^feat", group = "<!-- 0 -->🚀 Features" },
+    { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
+    { message = "^perf", group = "<!-- 2 -->⚡ Performance" },
+    { message = "^refactor", group = "<!-- 3 -->🚜 Refactor" },
+    { message = "^doc", group = "<!-- 4 -->📚 Documentation" },
+    { message = "^test", group = "<!-- 5 -->🧪 Testing" },
+    { message = "^style", group = "<!-- 6 -->🎨 Styling" },
+    { message = "^ui", group = "<!-- 6 -->🎨 Styling" },
+    { message = "^ci", group = "<!-- 7 -->⚙️ CI" },
+    { message = "^build", group = "<!-- 7 -->⚙️ CI" },
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^chore\\(deps", group = "<!-- 8 -->📦 Dependencies" },
+    { message = "^deps", group = "<!-- 8 -->📦 Dependencies" },
+    { message = "^chore", group = "<!-- 9 -->🧹 Chores" },
+    { message = "^revert", group = "<!-- 10 -->◀️ Revert" },
+    { message = ".*", group = "<!-- 11 -->Other" },
+]
+filter_commits = false
+fail_on_unmatched_commit = false
+# Linkify version tags so "[0.4.18]" in the changelog headings becomes
+# a clickable comparison link on GitHub.
+link_parsers = [
+    { pattern = '#(\d+)', href = "https://github.com/abeltrano/markdown-pr-review/issues/$1" },
+]
+use_branch_tags = false
+topo_order = false
+topo_order_commits = true
+sort_commits = "oldest"
+recurse_submodules = false

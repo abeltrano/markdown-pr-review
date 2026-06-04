@@ -209,11 +209,23 @@ A typical change looks like:
    git checkout main && git pull && git branch -D <feature-branch>
    ```
 
-Release notes are derived from the squash-merge commit history on
-`main` (each PR becomes one Conventional-Commit entry), so no
-hand-maintained changelog file is kept in the repo. Use `git log
---oneline vX.Y.Z..HEAD` or GitHub's auto-generated release notes when
-cutting a tag.
+Release notes live in [`CHANGELOG.md`](CHANGELOG.md), grouped by
+release tag, and are generated from Conventional Commits via
+[git-cliff](https://git-cliff.org/). After your PR is squash-merged
+to `main`, regenerate the file with:
+
+```bash
+npm run release:notes
+```
+
+The script runs `git-cliff --output CHANGELOG.md`, which walks every
+commit between annotated `vX.Y.Z` tags and re-emits the file. Open a
+follow-up PR with the regenerated file (or fold it into the next
+version bump). When cutting a release, bump `version` in
+`package.json`, annotate a `vX.Y.Z` tag on the matching commit
+(`git tag -a -m "vX.Y.Z: <one-line summary>" vX.Y.Z`), push the tag
+(`git push --tags`), and re-run the script before opening the
+release PR so the new version section appears at the top.
 
 Conversation threads opened on a PR must be resolved before the PR
 can merge. Squash-merging is the only enabled merge strategy, so
