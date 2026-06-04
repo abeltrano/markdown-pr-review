@@ -8,6 +8,32 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.4.17] - 2026-06-04
+
+### Fixed
+- Rendered-view prose now matches VS Code's built-in markdown preview
+  (`Ctrl+Shift+V`). The webview loads the same `markdown.css` that
+  ships with the bundled `vscode.markdown-language-features` extension,
+  resolved at runtime via `vscode.extensions.getExtension(...)
+  .extensionUri` (the on-disk path lives under a per-commit hash dir so
+  it can't be hardcoded). Previously, more-specific `article#content`
+  overrides for `pre`, `code`, `table`, `th`, `td`, and `blockquote`
+  masked the native look — headings had no bottom border, blockquotes
+  lacked the left bar, and tables had no native borders. Those overrides
+  have been removed and the built-in cascade now drives prose styling
+  while extension-specific rules (banners, thread markers, popovers,
+  diff gutters, `html/body { padding: 0 }` layout reset) continue to win
+  by source order. User `markdown.styles` entries still load last, so
+  user customizations still take precedence over both built-in and
+  extension defaults.
+
+### Changed
+- `RestylePayload` (host → rendered-view) now carries `builtinStyleUris`
+  in addition to `userStyleUris`. The webview swaps the built-in
+  `<link>` element(s) on live restyle just like it does for user
+  stylesheets, inserting them before the inline `<style>` so the
+  cascade order is preserved.
+
 ## [0.4.16] - 2026-06-03
 
 ### Fixed

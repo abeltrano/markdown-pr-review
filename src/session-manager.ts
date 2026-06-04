@@ -165,15 +165,16 @@ export class SessionManager {
   // Build HTML envelope for the panel.
   const distRoot = vscode.Uri.joinPath(this.context.extensionUri, 'out');
   const userStyles = this.resolveUserStyles(panel.webview);
+  const builtinStyles = this.resolveBuiltinMarkdownStyles(panel.webview);
   // Re-set the webview options so user-configured markdown.styles
-  // file paths are reachable via the webview resource scheme.
-  // The CustomEditorProvider sets a baseline (enableScripts +
-  // distRoot); this overrides with the union. Must happen before
-  // we assign webview.html so the resource scheme covers the
-  // user-style <link> tags emitted there.
+  // file paths AND the built-in markdown extension's media dir are
+  // reachable via the webview resource scheme. The CustomEditorProvider
+  // sets a baseline (enableScripts + distRoot); this overrides with
+  // the union. Must happen before we assign webview.html so the
+  // resource scheme covers every <link> tag emitted there.
   panel.webview.options = {
    enableScripts: true,
-   localResourceRoots: [distRoot, ...userStyles.roots]
+   localResourceRoots: [distRoot, ...builtinStyles.roots, ...userStyles.roots]
   };
   const nonce = generateNonce();
   const csp = buildRenderedViewCsp({ nonce, webview: panel.webview });
@@ -199,6 +200,7 @@ export class SessionManager {
     vscode.Uri.joinPath(this.context.extensionUri, 'out', 'codicons', 'codicon.css')
    ).toString(),
    previewStyle: readMarkdownPreviewStyle(),
+   builtinStyleUris: builtinStyles.uris,
    userStyleUris: userStyles.uris
   });
 
@@ -501,6 +503,41 @@ export class SessionManager {
  }
 
  /**
+  * Resolve VS Code's built-in markdown preview stylesheet
+  * (markdown.css from the bundled `vscode.markdown-language-features`
+  * extension). Returns webview-loadable URIs and the parent dir to add
+  * to `localResourceRoots`. Returns empty arrays if the extension can't
+  * be found — some stripped-down VS Code variants ship without it, and
+  * we still want to render in that case (just without the native look).
+  *
+  * The path inside that extension changes between VS Code commits
+  * (it sits under a hash-named dir), so we MUST resolve it via the
+  * extension API rather than guessing a fixed location.
+  */
+ private resolveBuiltinMarkdownStyles(webview: vscode.Webview): {
+  uris: string[];
+  roots: vscode.Uri[];
+ } {
+  try {
+   const ext = vscode.extensions.getExtension(
+    'vscode.markdown-language-features'
+   );
+   if (!ext) return { uris: [], roots: [] };
+   const mediaDir = vscode.Uri.joinPath(ext.extensionUri, 'media');
+   const cssUri = vscode.Uri.joinPath(mediaDir, 'markdown.css');
+   return {
+    uris: [webview.asWebviewUri(cssUri).toString()],
+    roots: [mediaDir]
+   };
+  } catch (err) {
+   this.log.warn('Failed to resolve built-in markdown.css; falling back.', {
+    error: err instanceof Error ? err.message : String(err)
+   });
+   return { uris: [], roots: [] };
+  }
+ }
+
+ /**
   * Push a live style refresh to every open rendered-view panel.
   * Invoked when the user changes `markdown.preview.*` or
   * `markdown.styles`. We re-resolve user styles (including
@@ -515,12 +552,15 @@ export class SessionManager {
   for (const [uriKey, panel] of session.openedEditors) {
    try {
     const userStyles = this.resolveUserStyles(panel.webview);
+    const builtinStyles = this.resolveBuiltinMarkdownStyles(panel.webview);
     // Re-widen localResourceRoots first so any newly-added
     // user style file dir is reachable before the webview
-    // tries to fetch it via the swapped <link>.
+    // tries to fetch it via the swapped <link>. Built-in
+    // roots are stable across config changes but included
+    // for symmetry with the initial render path.
     panel.webview.options = {
      enableScripts: true,
-     localResourceRoots: [distRoot, ...userStyles.roots]
+     localResourceRoots: [distRoot, ...builtinStyles.roots, ...userStyles.roots]
     };
     void panel.webview.postMessage({
      type: 'restyle',
@@ -528,6 +568,7 @@ export class SessionManager {
       fontFamily: previewStyle.fontFamily,
       fontSize: previewStyle.fontSize,
       lineHeight: previewStyle.lineHeight,
+      builtinStyleUris: builtinStyles.uris,
       userStyleUris: userStyles.uris
      }
     } satisfies HostToRenderedView);
@@ -566,14 +607,19 @@ function renderedViewHtml(opts: {
  scriptUri: string;
  codiconCssUri: string;
  previewStyle: { fontFamily: string; fontSize: number; lineHeight: number };
+ builtinStyleUris: string[];
  userStyleUris: string[];
 }): string {
- // User-style <link>s are emitted AFTER our <style> block so they
- // win the cascade for same-specificity selectors — matching the
- // behaviour of VS Code's built-in markdown preview, which appends
- // markdown.styles entries after its own stylesheet. The
- // data-user-style attribute lets main.ts identify and replace them
- // on live restyle.
+ // Built-in markdown.css from VS Code's bundled
+ // markdown-language-features extension is loaded BEFORE our inline
+ // <style> so our extension-specific overrides (body padding, banners,
+ // thread markers, diff gutters) win where they apply, while the
+ // built-in's prose styling (headings, lists, blockquote, pre, code,
+ // tables) drives the look of the actual markdown content. User
+ // `markdown.styles` entries come LAST so the user's tweaks always win.
+ const builtinStyleLinks = opts.builtinStyleUris
+  .map((uri) => `    <link rel="stylesheet" data-builtin-style="true" href="${escapeHtmlAttribute(uri)}">`)
+  .join('\n');
  const userStyleLinks = opts.userStyleUris
   .map((uri) => `    <link rel="stylesheet" data-user-style="true" href="${escapeHtmlAttribute(uri)}">`)
   .join('\n');
@@ -583,22 +629,29 @@ function renderedViewHtml(opts: {
  <meta charset="utf-8">
  <meta http-equiv="Content-Security-Policy" content="${opts.csp}">
  <link rel="stylesheet" href="${opts.codiconCssUri}">
+${builtinStyleLinks}
  <title>Markdown PR Review</title>
  <style>
   /* Match the built-in markdown preview's font defaults so prose
-  in our rendered view looks the same as Ctrl+Shift+V. Code
-  blocks keep the editor monospace font (overridden below). */
+  in our rendered view looks the same as Ctrl+Shift+V. The same
+  --markdown-font-* CSS variables drive both VS Code's built-in
+  markdown.css and this block. */
   :root {
    --markdown-font-family: ${escapeCssString(opts.previewStyle.fontFamily)};
    --markdown-font-size: ${opts.previewStyle.fontSize}px;
    --markdown-line-height: ${opts.previewStyle.lineHeight};
   }
+  /* Built-in markdown.css applies padding: 0 26px to html+body and
+     padding-top: 1em to body; we override that here because our
+     centred max-width #content-wrapper provides the prose gutter.
+     This rule comes after the built-in <link> so it wins by source
+     order (same specificity). */
+  html, body { padding: 0; }
   body {
    font-family: var(--markdown-font-family);
    font-size: var(--markdown-font-size);
    line-height: var(--markdown-line-height);
    margin: 0;
-   padding: 0;
    /* Apply the foreground color at the body level (matches VS Code's
       built-in markdown preview) so any user markdown.styles entry
       targeting body can cascade naturally to descendants. Using
@@ -609,13 +662,11 @@ function renderedViewHtml(opts: {
   }
   #pr-banner { padding: 6px 12px; background: var(--vscode-editorWidget-background); border-bottom: 1px solid var(--vscode-editorWidget-border); font-size: 0.85em; }
   #content-wrapper { position: relative; padding: 16px 24px; max-width: 900px; margin: 0 auto; }
-  article#content pre,
-  article#content code { font-family: var(--vscode-editor-font-family, monospace); }
-  article#content pre { background: var(--vscode-textCodeBlock-background); padding: 8px; overflow-x: auto; }
-  article#content code { background: var(--vscode-textCodeBlock-background); padding: 1px 4px; }
-  article#content table { border-collapse: collapse; margin: 8px 0; }
-  article#content th, article#content td { border: 1px solid var(--vscode-editorWidget-border); padding: 4px 8px; }
-  article#content blockquote { border-left: 3px solid var(--vscode-editorWidget-border); padding-left: 12px; opacity: 0.85; }
+  /* Prose styling for h1-h6, p, ul, ol, li, blockquote, pre, code,
+     table, hr is delegated to the built-in markdown.css <link> above
+     so the rendered view matches Ctrl+Shift+V. Only extension-specific
+     selectors (banner, thread marker/popover, diff gutter, selection)
+     live in this block. */
   .ado-thread-marker {
    display: inline-flex; align-items: center; justify-content: center;
    margin-left: 6px; padding: 2px 4px;
