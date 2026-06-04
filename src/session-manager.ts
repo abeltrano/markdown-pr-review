@@ -599,10 +599,16 @@ function renderedViewHtml(opts: {
    line-height: var(--markdown-line-height);
    margin: 0;
    padding: 0;
+   /* Apply the foreground color at the body level (matches VS Code's
+      built-in markdown preview) so any user markdown.styles entry
+      targeting body can cascade naturally to descendants. Using
+      --vscode-foreground (general UI foreground) instead of
+      --vscode-editor-foreground keeps prose readable on themes that
+      intentionally mute the editor text color. */
+   color: var(--vscode-foreground);
   }
   #pr-banner { padding: 6px 12px; background: var(--vscode-editorWidget-background); border-bottom: 1px solid var(--vscode-editorWidget-border); font-size: 0.85em; }
   #content-wrapper { position: relative; padding: 16px 24px; max-width: 900px; margin: 0 auto; }
-  article#content { color: var(--vscode-editor-foreground); }
   article#content pre,
   article#content code { font-family: var(--vscode-editor-font-family, monospace); }
   article#content pre { background: var(--vscode-textCodeBlock-background); padding: 8px; overflow-x: auto; }

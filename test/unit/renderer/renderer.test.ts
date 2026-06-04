@@ -126,7 +126,7 @@ describe('renderer pipeline', () => {
  });
 
  describe('TC-037 — mermaid fence emits CSP-safe wrapper', () => {
-  it('emits a div.mermaid with embedded script[text/x-mermaid] payload', () => {
+  it('emits a div.mermaid with embedded data-mermaid-source payload', () => {
    const md =
     '```mermaid\nsequenceDiagram\nA->>B: hi\n```\n';
    const { html, mermaidBlockCount } = render({ markdown: md });
@@ -134,12 +134,21 @@ describe('renderer pipeline', () => {
    expect(html).to.match(
     /<div\s+class="mermaid"[^>]*data-source-line-start="1"[^>]*data-source-line-end="4"[^>]*>/
    );
-   expect(html).to.contain('<script type="text/x-mermaid">');
+   // The new attribute carrier (replaces an earlier <script type="text/x-mermaid">
+   // data-island that DOMPurify stripped). The diagram source is escaped
+   // for HTML-attribute context and recovered at runtime via
+   // element.dataset.mermaidSource (the HTML parser auto-decodes the
+   // attribute value back to the original characters).
+   expect(html).to.contain('data-mermaid-source="');
+   expect(html).to.contain('data-mermaid-state="pending"');
    expect(html).to.contain('sequenceDiagram');
    expect(html).to.contain('A-&gt;&gt;B: hi');
+   // The old <script> carrier MUST NOT come back — DOMPurify would
+   // strip it in the webview, producing the regression we just fixed.
+   expect(html).to.not.contain('<script');
   });
 
-  it('escapes diagram source so &, <, >, " do not break out of the script payload', () => {
+  it('escapes diagram source so &, <, >, " do not break out of the attribute', () => {
    const md = [
     '```mermaid',
     'graph TD',
@@ -147,8 +156,11 @@ describe('renderer pipeline', () => {
     '```',
    ].join('\n');
    const { html } = render({ markdown: md });
-   expect(html).to.contain('&lt;x &amp; y&gt;');
-   expect(html).to.not.match(/<script[^>]*>[^<]*<x/);
+   // All four metacharacters must be escaped inside the attribute
+   // value so the source can never escape the attribute context.
+   expect(html).to.contain('data-mermaid-source="');
+   expect(html).to.contain('&quot;&lt;x &amp; y&gt;&quot;');
+   expect(html).to.not.contain('<x ');
   });
 
   it('regular language fences are not affected by the mermaid rule', () => {
@@ -157,6 +169,32 @@ describe('renderer pipeline', () => {
    expect(mermaidBlockCount).to.equal(0);
    expect(html).to.match(/<pre/);
    expect(html).to.not.match(/class="mermaid"/);
+   expect(html).to.not.contain('data-mermaid-source');
+  });
+
+  it('preserves multiline subgraph source with HTML-label syntax', () => {
+   // Mirrors a real-world failure: flowcharts with subgraphs and HTML
+   // labels (the `<br/>` inside node labels) were rendered as raw text
+   // when the old <script> data-island was stripped by DOMPurify.
+   const md = [
+    '```mermaid',
+    'graph TB',
+    '  subgraph "Interface Layer"',
+    '    ORCH_YML["ADO Pipeline<br/>(orchestration.yml)"]',
+    '    CLI["CLI Script<br/>(release.ps1)"]',
+    '  end',
+    '```'
+   ].join('\n');
+   const { html, mermaidBlockCount } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(1);
+   // Both `<` and `>` of the inner `<br/>` survive as escaped entities
+   // inside the attribute value; the HTML parser will decode them back
+   // when mermaid-loader.ts reads `dataset.mermaidSource`.
+   expect(html).to.contain('data-mermaid-source="');
+   expect(html).to.contain('ADO Pipeline&lt;br/&gt;');
+   expect(html).to.contain('subgraph &quot;Interface Layer&quot;');
+   // No raw <br/> escaping the attribute context.
+   expect(html).to.not.contain('<br/>(orchestration.yml');
   });
  });
 });

@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Mermaid fence rule. Replaces markdown-it's default fence renderer for
 // info==='mermaid' with a CSP-safe wrapper. The diagram source is stored
-// inside <script type="text/x-mermaid">{escaped}</script> so it never gets
-// executed by the browser; the webview's mermaid-loader.ts reads it back at
-// runtime and feeds it to mermaid.render().
+// in a `data-mermaid-source` attribute on the wrapper div; the webview's
+// mermaid-loader.ts reads it back at runtime via `dataset.mermaidSource`
+// (the HTML parser auto-decodes attribute entities) and feeds it to
+// mermaid.render().
+//
+// The attribute carrier replaces an earlier `<script type="text/x-mermaid">`
+// data-island, which DOMPurify (used as defense-in-depth on innerHTML in
+// the webview) silently strips because <script> is not in its safe-tag
+// list. Data attributes are inert and pass the sanitizer unchanged.
 
 import type MarkdownIt from 'markdown-it';
 
@@ -22,12 +28,12 @@ export function applyMermaidFenceRule(md: MarkdownIt): void {
   const lineAttrs = startAttr && endAttr
    ? ` data-source-line-start="${startAttr}" data-source-line-end="${endAttr}"`
    : '';
-  const escaped = escapeForMermaidScript(token.content);
-  return `<div class="mermaid"${lineAttrs}><script type="text/x-mermaid">${escaped}</script></div>\n`;
+  const escaped = escapeForAttribute(token.content);
+  return `<div class="mermaid"${lineAttrs} data-mermaid-source="${escaped}" data-mermaid-state="pending"></div>\n`;
  };
 }
 
-function escapeForMermaidScript(src: string): string {
+function escapeForAttribute(src: string): string {
  return src
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
