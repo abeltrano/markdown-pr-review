@@ -175,7 +175,7 @@
     "@types/vscode": "^1.85.0",
     "@vscode/codicons": "^0.0.45",
     "@vscode/vsce": "^2.32.0",
-    "chai": "^4.5.0",
+    "chai": "^6.2.2",
     "esbuild": "^0.25.0",
     "eslint": "^9.0.0",
     "mocha": "^11.7.6",
