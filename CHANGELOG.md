@@ -8,6 +8,30 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [0.4.18] - 2026-06-04
+
+### Fixed
+- Comment-input sidebar webview is now themed correctly. The textarea,
+  Post button, and Cancel button were rendering with user-agent defaults
+  (white background, black text) instead of inheriting the active VS
+  Code theme. Root cause: the webview's CSP (`style-src ${webview
+  .cspSource}`) intentionally omits `'unsafe-inline'` (only the
+  rendered-view CSP relaxes it, for mermaid's runtime style injection),
+  but all theming was declared in an inline `<style>` block. The browser
+  silently blocked the entire block, so `var(--vscode-input-background)`,
+  `var(--vscode-button-background)`, etc. never reached the elements.
+  Styles have been extracted to `src/views/comment-input/styles.css` and
+  are loaded via a `<link>` from `out/views/comment-input/styles.css`,
+  which the strict CSP allows. The textarea now uses the UI font family
+  (`var(--vscode-font-family)`) to match VS Code's native input controls
+  (Search box, Find/Replace) rather than the editor monospace font.
+
+### Build
+- `esbuild.js` now copies `src/views/comment-input/styles.css` to
+  `out/views/comment-input/styles.css` alongside the codicon copy step.
+  esbuild's bundler only follows imports from the TS entry point, so the
+  stylesheet is shipped via an explicit copy rather than an import.
+
 ## [0.4.17] - 2026-06-04
 
 ### Fixed
