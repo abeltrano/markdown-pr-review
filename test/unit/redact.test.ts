@@ -55,6 +55,22 @@ describe('TC-145 — log redaction', () => {
    const out = redactJwtsAndUrlTokens('just a plain message');
    expect(out).to.equal('just a plain message');
   });
+
+  it('completes in bounded time on pathological "eyJ"-repeated input (ReDoS regression)', function () {
+   // Guards against CodeQL js/polynomial-redos regression on JWT_LIKE_REGEX.
+   // The original `[A-Za-z0-9_-]+` quantifier exhibited polynomial-time
+   // backtracking on inputs like "eyJeyJeyJ..." (~90s for 160K
+   // repetitions). The bounded-atomic rewrite makes scanning linear in
+   // input length. Pick a budget loose enough to absorb CI noise while
+   // tight enough to fail catastrophically if backtracking returns.
+   this.timeout(2000);
+   const input = 'eyJ'.repeat(50_000);
+   const start = Date.now();
+   const out = redactJwtsAndUrlTokens(input);
+   const elapsed = Date.now() - start;
+   expect(out).to.equal(input);
+   expect(elapsed).to.be.lessThan(1500);
+  });
  });
 
  describe('redactAuthHeaders', () => {

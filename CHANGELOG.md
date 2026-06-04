@@ -8,6 +8,26 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Security
+- Hardened webview `innerHTML` assignments against the entire CodeQL
+  `js/xss`, `js/xss-through-dom`, and `js/client-side-unvalidated-url-redirection`
+  alert surface. The host markdown-it pipeline is already configured
+  with `html: false` and the webview runs under a strict CSP, but as
+  defense-in-depth:
+  - HTML and mermaid-SVG payloads are now passed through DOMPurify
+    before being assigned to `innerHTML`.
+  - The comment-input draft is now built via `createElement` +
+    `textContent` instead of a template literal + `innerHTML`.
+  - Stylesheet URIs delivered via host → webview restyle messages are
+    validated to be `https:` (which is the only scheme produced by
+    `webview.asWebviewUri()`).
+- Rewrote `JWT_LIKE_REGEX` (used by log-payload redaction) to combine a
+  bounded quantifier with the lookahead-backreference atomic-group
+  idiom, eliminating CodeQL `js/polynomial-redos`. Worst-case scan time
+  on "eyJ"-saturated input went from ~90 s (160K repetitions, polynomial)
+  to a few hundred ms (linear). Added TC-145 regression test with a
+  1.5 s budget.
+
 ## [0.4.15] - 2026-06-03
 
 ### Added

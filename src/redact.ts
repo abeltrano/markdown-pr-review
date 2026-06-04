@@ -6,8 +6,22 @@
 // Matches a JWT or similarly structured access token: three dot-separated
 // base64url segments, the first beginning with "eyJ" (the base64url prefix
 // of `{"`).
+//
+// Defends against the polynomial-time backtracking pattern (CodeQL
+// js/polynomial-redos) on inputs containing many "eyJ" prefixes by
+// combining two techniques:
+//
+//   1. Bounded quantifier {1,8192}. JWT segments are base64url-encoded;
+//      realistic tokens fit well under 8 KiB per segment. The bound
+//      converts the worst-case per-position work from O(remaining input)
+//      into a constant, giving overall O(N) scanning.
+//   2. Lookahead-then-backreference `(?=(X+))\1`, functionally equivalent
+//      to `X+` but treated atomically -- the captured run cannot be
+//      given back during backtracking. Since `.` is excluded from the
+//      character class the match would never re-distribute characters
+//      across segments anyway, so this preserves the original semantics.
 export const JWT_LIKE_REGEX =
- /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
+ /eyJ(?=([A-Za-z0-9_-]{1,8192}))\1\.(?=([A-Za-z0-9_-]{1,8192}))\2\.(?=([A-Za-z0-9_-]{1,8192}))\3/g;
 
 // Header names recognized as auth carriers.
 export const AUTH_HEADER_NAMES = new Set<string>([

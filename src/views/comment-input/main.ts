@@ -69,25 +69,44 @@ function renderActive(): void {
  }
  const a = state.active;
  const root = ensureRoot();
- root.innerHTML = `
-  <div class="draft">
-   <header>
-    <strong>${escapeHtml(a.filePath)}</strong>
-    <span class="lines">Lines ${a.rightFileStart.line}-${a.rightFileEnd.line}</span>
-   </header>
-   <textarea id="body" rows="8" placeholder="Type your comment…"></textarea>
-   <footer>
-    <button id="post">Post</button>
-    <button id="cancel" class="secondary">Cancel</button>
-   </footer>
-  </div>
- `;
- const ta = root.querySelector<HTMLTextAreaElement>('#body')!;
+ const draft = document.createElement('div');
+ draft.className = 'draft';
+
+ const header = document.createElement('header');
+ const strong = document.createElement('strong');
+ strong.textContent = a.filePath;
+ header.appendChild(strong);
+ const lines = document.createElement('span');
+ lines.className = 'lines';
+ lines.textContent =
+  `Lines ${a.rightFileStart.line}-${a.rightFileEnd.line}`;
+ header.appendChild(lines);
+ draft.appendChild(header);
+
+ const ta = document.createElement('textarea');
+ ta.id = 'body';
+ ta.rows = 8;
+ ta.placeholder = 'Type your comment\u2026';
+ draft.appendChild(ta);
+
+ const footer = document.createElement('footer');
+ const postBtn = document.createElement('button');
+ postBtn.id = 'post';
+ postBtn.textContent = 'Post';
+ footer.appendChild(postBtn);
+ const cancelBtn = document.createElement('button');
+ cancelBtn.id = 'cancel';
+ cancelBtn.className = 'secondary';
+ cancelBtn.textContent = 'Cancel';
+ footer.appendChild(cancelBtn);
+ draft.appendChild(footer);
+
+ root.replaceChildren(draft);
  ta.value = formatAutoQuote(a.autoQuote);
  ta.focus();
  // Move cursor to end so reviewer types after the quote.
  ta.setSelectionRange(ta.value.length, ta.value.length);
- root.querySelector('#post')?.addEventListener('click', () => {
+ postBtn.addEventListener('click', () => {
   const text = ta.value.trim();
   if (!text) return;
   const req: PostThreadRequest = {
@@ -99,7 +118,7 @@ function renderActive(): void {
   };
   post({ type: 'requestPostThread', payload: req });
  });
- root.querySelector('#cancel')?.addEventListener('click', () => {
+ cancelBtn.addEventListener('click', () => {
   post({ type: 'cancelDraft' });
  });
 }
@@ -132,14 +151,6 @@ function formatAutoQuote(autoQuote: string): string {
   .map(line => `> ${line}`)
   .join('\n');
  return `${quoted}\n\n`;
-}
-
-function escapeHtml(s: string): string {
- return s
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;');
 }
 
 // Render the empty state and notify host.

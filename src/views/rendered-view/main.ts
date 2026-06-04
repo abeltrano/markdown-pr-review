@@ -16,6 +16,7 @@ import type {
  Thread
 } from '../../types';
 import { initMermaid } from './mermaid-loader';
+import { isSafeStylesheetUri, sanitizeHtml } from './sanitize';
 import { attachSelectionHandlers, captureSelection } from './selection-handler';
 import { mountThreadMarkers, refreshThreadMarkers } from './selection-highlight';
 
@@ -87,7 +88,7 @@ function onDiffApplied(payload: {
 }): void {
  const article = document.getElementById('content') as HTMLElement | null;
  if (!article) return;
- article.innerHTML = payload.html;
+ article.innerHTML = sanitizeHtml(payload.html);
  if (state.init) {
   state.init.fileContent.html = payload.html;
   state.init.fileContent.sourceMap = payload.sourceMap;
@@ -110,7 +111,7 @@ function onInit(payload: RenderedViewInitPayload): void {
   log('error', 'Content element missing');
   return;
  }
- article.innerHTML = payload.fileContent.html;
+ article.innerHTML = sanitizeHtml(payload.fileContent.html);
  document.body.setAttribute('data-file-path', payload.filePath);
  setHeader(payload);
  attachSelectionHandlers({
@@ -191,6 +192,10 @@ function onRestyle(payload: RestylePayload): void {
   .querySelectorAll('link[data-user-style="true"]')
   .forEach((el) => el.remove());
  for (const uri of payload.userStyleUris) {
+  if (!isSafeStylesheetUri(uri)) {
+   log('warn', 'Dropped non-https stylesheet uri from restyle payload', uri);
+   continue;
+  }
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.setAttribute('data-user-style', 'true');
