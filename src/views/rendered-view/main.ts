@@ -16,7 +16,7 @@ import type {
  Thread
 } from '../../types';
 import { initMermaid } from './mermaid-loader';
-import { isSafeStylesheetUri, sanitizeHtml } from './sanitize';
+import { sanitizeHtml } from './sanitize';
 import { attachSelectionHandlers, captureSelection } from './selection-handler';
 import { mountThreadMarkers, refreshThreadMarkers } from './selection-highlight';
 
@@ -192,14 +192,26 @@ function onRestyle(payload: RestylePayload): void {
   .querySelectorAll('link[data-user-style="true"]')
   .forEach((el) => el.remove());
  for (const uri of payload.userStyleUris) {
-  if (!isSafeStylesheetUri(uri)) {
+  // Parse + scheme-check inline so CodeQL sees the URL sanitizer on
+  // the same data-flow path that reaches link.href. Stylesheet URIs
+  // produced by host-side `webview.asWebviewUri()` always present as
+  // https:; anything else is dropped (cannot be `javascript:`,
+  // `data:`, etc.).
+  let parsed: URL;
+  try {
+   parsed = new URL(uri);
+  } catch {
+   log('warn', 'Dropped malformed stylesheet uri from restyle payload', uri);
+   continue;
+  }
+  if (parsed.protocol !== 'https:') {
    log('warn', 'Dropped non-https stylesheet uri from restyle payload', uri);
    continue;
   }
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.setAttribute('data-user-style', 'true');
-  link.href = uri;
+  link.href = parsed.href;
   head.appendChild(link);
  }
 }
