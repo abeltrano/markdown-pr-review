@@ -34,14 +34,10 @@ export function normalizeBlock(lines: string[], startLine: number): NormalizedSp
  for (let li = 0; li < lines.length; li++) {
   const line = lines[li]!;
   const lineNo = startLine + li;
-  let col = 1;                 // 1-indexed offset into raw line
-  let i = 0;
   // Strip leading list markers / blockquote markers / heading hashes.
   const leadingStrip = stripLeading(line);
-  // Advance i and col by the consumed prefix.
-  i = leadingStrip.consumed;
-  col = leadingStrip.consumed + 1;
-  const remaining = line.slice(i);
+  const col = leadingStrip.consumed + 1; // 1-indexed offset into raw line
+  const remaining = line.slice(leadingStrip.consumed);
   // Skip table separator rows entirely (e.g. |---|---|).
   if (/^[\s|:-]+$/.test(remaining) && remaining.includes('|')) {
    continue;
