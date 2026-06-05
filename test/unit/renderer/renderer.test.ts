@@ -197,4 +197,174 @@ describe('renderer pipeline', () => {
    expect(html).to.not.contain('<br/>(orchestration.yml');
   });
  });
+
+ describe('TC-038 — :::mermaid colon-fence block (ADO syntax)', () => {
+  it('emits a div.mermaid for a closed :::mermaid block', () => {
+   const md = [
+    ':::mermaid',
+    'sequenceDiagram',
+    'A->>B: hi',
+    ':::',
+    ''
+   ].join('\n');
+   const { html, mermaidBlockCount } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(1);
+   expect(html).to.match(
+    /<div\s+class="mermaid"[^>]*data-source-line-start="1"[^>]*data-source-line-end="4"[^>]*>/
+   );
+   expect(html).to.contain('data-mermaid-source="');
+   expect(html).to.contain('data-mermaid-state="pending"');
+   expect(html).to.contain('sequenceDiagram');
+   expect(html).to.contain('A-&gt;&gt;B: hi');
+  });
+
+  it('preserves verbatim multiline subgraph content with internal indentation', () => {
+   const md = [
+    ':::mermaid',
+    'flowchart TD',
+    '    subgraph "user mode"',
+    '        direction TB',
+    '        A[WESP service] <--> B[WESP app]',
+    '    end',
+    ':::',
+    ''
+   ].join('\n');
+   const { html, mermaidBlockCount } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(1);
+   expect(html).to.contain('data-mermaid-source="');
+   // Inner 4- and 8-space indentation of the diagram body is preserved
+   // (only the fence's OWN indentation would be stripped, and the
+   // opener here is at column 0 so there is nothing to strip).
+   expect(html).to.contain('    subgraph &quot;user mode&quot;');
+   expect(html).to.contain('        direction TB');
+   expect(html).to.contain('A[WESP service] &lt;--&gt; B[WESP app]');
+  });
+
+  it('treats EOF as an implicit close (no terminating :::)', () => {
+   const md = [
+    ':::mermaid',
+    'graph TD',
+    'A --> B',
+    ''
+   ].join('\n');
+   const { html, mermaidBlockCount } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(1);
+   expect(html).to.match(/<div\s+class="mermaid"[^>]*>/);
+   expect(html).to.contain('graph TD');
+  });
+
+  it('matches the opener case-insensitively', () => {
+   const md = ':::Mermaid\ngraph TD\nA --> B\n:::\n';
+   const { mermaidBlockCount, html } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(1);
+   expect(html).to.match(/<div\s+class="mermaid"/);
+  });
+
+  it('does NOT recognise :::mermaidish (non-exact suffix)', () => {
+   const md = ':::mermaidish\ngraph TD\n:::\n';
+   const { mermaidBlockCount, html } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(0);
+   expect(html).to.not.match(/<div\s+class="mermaid"/);
+  });
+
+  it('does NOT recognise :::mermaid followed by non-whitespace tail', () => {
+   const md = ':::mermaid graph\nA --> B\n:::\n';
+   const { mermaidBlockCount, html } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(0);
+   expect(html).to.not.match(/<div\s+class="mermaid"/);
+  });
+
+  it('does NOT recognise a 4-space-indented opener (it is an indented code block)', () => {
+   const md = '    :::mermaid\n    graph TD\n    :::\n';
+   const { mermaidBlockCount, html } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(0);
+   expect(html).to.match(/<pre/);
+  });
+
+  it('recognises a 3-space-indented opener and strips its leading indentation from content', () => {
+   const md = [
+    '   :::mermaid',
+    '   graph TD',
+    '   A --> B',
+    '   :::',
+    ''
+   ].join('\n');
+   const { mermaidBlockCount, html } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(1);
+   expect(html).to.match(/<div\s+class="mermaid"/);
+   // The fence's own 3-space indentation is stripped; content lines
+   // start at column 0 in `data-mermaid-source`.
+   expect(html).to.contain('graph TD');
+   expect(html).to.not.contain('   graph TD');
+  });
+
+  it('does NOT close on a 4-space-indented ::: line inside the body', () => {
+   const md = [
+    ':::mermaid',
+    'graph TD',
+    '    :::',
+    'A --> B',
+    ':::',
+    ''
+   ].join('\n');
+   const { mermaidBlockCount, html } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(1);
+   // The indented ::: is part of the diagram body, not a closer.
+   expect(html).to.contain('A --&gt; B');
+   // The block extends across all 5 lines (open + 3 body + close).
+   expect(html).to.match(/data-source-line-start="1"[^>]*data-source-line-end="5"/);
+  });
+
+  it('coexists with a regular ```mermaid block in the same document', () => {
+   const md = [
+    ':::mermaid',
+    'graph TD',
+    'A --> B',
+    ':::',
+    '',
+    '```mermaid',
+    'sequenceDiagram',
+    'X->>Y: hi',
+    '```',
+    ''
+   ].join('\n');
+   const { mermaidBlockCount, html } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(2);
+   const divCount = (html.match(/<div\s+class="mermaid"/g) ?? []).length;
+   expect(divCount).to.equal(2);
+   expect(html).to.contain('graph TD');
+   expect(html).to.contain('sequenceDiagram');
+  });
+
+  it('does not interfere with a regular paragraph that happens to contain :::', () => {
+   const md = 'See the spec :::section for details.\n';
+   const { mermaidBlockCount, html } = render({ markdown: md });
+   expect(mermaidBlockCount).to.equal(0);
+   expect(html).to.match(/<p[^>]*>See the spec :::section for details\.<\/p>/);
+  });
+ });
+
+ describe('TC-039 — diff annotations propagate to mermaid block wrappers', () => {
+  it('writes data-diff-state on a ```mermaid diff-added block', () => {
+   const md = '```mermaid\ngraph TD\nA --> B\n```\n';
+   const { html } = render({
+    markdown: md,
+    diffAnnotations: [{ headLineStart: 1, headLineEnd: 4, state: 'added' }]
+   });
+   expect(html).to.match(
+    /<div\s+class="mermaid"[^>]*data-diff-state="added"[^>]*>/
+   );
+  });
+
+  it('writes data-diff-state on a :::mermaid diff-added block', () => {
+   const md = ':::mermaid\ngraph TD\nA --> B\n:::\n';
+   const { html } = render({
+    markdown: md,
+    diffAnnotations: [{ headLineStart: 1, headLineEnd: 4, state: 'added' }]
+   });
+   expect(html).to.match(
+    /<div\s+class="mermaid"[^>]*data-diff-state="added"[^>]*>/
+   );
+  });
+ });
 });
