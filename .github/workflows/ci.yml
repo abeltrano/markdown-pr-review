@@ -11,10 +11,10 @@
 # The `coverage` job runs separately on ubuntu-latest only (coverage
 # results are OS-independent) and uploads an lcov report to Codecov.
 # It enforces the `c8` thresholds declared in package.json — a regression
-# in tested-surface coverage fails the job. The job is deliberately
-# NOT wired into the `lint + build + test` summary so branch-protection
-# changes are not needed to add it; promote it to a required check once
-# the team is comfortable with the threshold.
+# in tested-surface coverage fails the job. `coverage` is a required
+# status check on main's branch-protection rule alongside
+# `lint + build + test`, so renaming the job (or its `name:` value)
+# would break PR auto-merge until protection is updated.
 name: CI
 
 on:
@@ -65,7 +65,7 @@ jobs:
     name: coverage
     runs-on: ubuntu-latest
     # id-token: write is required for Codecov's tokenless OIDC upload
-    # flow (codecov/codecov-action@v5 with use_oidc: true). contents:read
+    # flow (codecov/codecov-action@v6 with use_oidc: true). contents:read
     # is the default minimum needed for actions/checkout.
     permissions:
       contents: read
@@ -87,7 +87,13 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        # v6 (2026-03-26) bumped the internal actions/github-script
+        # pin from v7 (Node 20) to v8 (Node 24), clearing the Node 20
+        # deprecation warning that v5 triggered. GitHub will force
+        # Node 24 on June 16, 2026 and remove Node 20 on September 16,
+        # 2026 — see
+        # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/.
+        uses: codecov/codecov-action@v6
         with:
           files: ./coverage/lcov.info
           disable_search: true
