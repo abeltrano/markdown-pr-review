@@ -238,24 +238,40 @@ jobs:
           IS_PRERELEASE: ${{ needs.package.outputs.is_prerelease }}
         run: |
           set -euo pipefail
-          # vsce show returns nonzero with a "not found" message for an
-          # extension that's never been published. Treat that as "needs
-          # first publish". Any other nonzero (network, auth) fails loud.
+          # Idempotency check for reruns of the same tag. `vsce show` is
+          # surprisingly inconsistent across versions/states:
+          #  * Extension exists: exit 0, prints a JSON object with a
+          #    `versions` array.
+          #  * Extension never published: exit 0, prints the literal
+          #    string `undefined` (older vsce) OR exit nonzero with a
+          #    "not found" message (newer vsce).
+          #  * Network / auth failure: exit nonzero with arbitrary text.
+          # The robust read is "did we get back a JSON object with a
+          # versions array that contains $VERSION?" If yes, skip publish.
+          # If anything else (parse failure, missing array, network err),
+          # let `vsce publish` itself surface the real error — duplicate
+          # publishes are rejected by the marketplace with a clear
+          # "version already exists" message, so we won't silently
+          # double-publish.
+          show_output=""
           show_status=0
           show_output=$(vsce show abeltrano.markdown-pr-review --json 2>&1) || show_status=$?
-          if [ "$show_status" -eq 0 ]; then
-            already=$(node -e "const d=JSON.parse(process.argv[1]); process.stdout.write((d.versions||[]).some(v => v.version === process.argv[2]) ? 'yes' : 'no')" "$show_output" "$VERSION")
-            if [ "$already" = "yes" ]; then
-              echo "::notice::Version $VERSION already on Marketplace; skipping vsce publish."
-              exit 0
-            fi
-          elif echo "$show_output" | grep -qiE "not (found|exist)|404|ERR_EXTENSION_NOT_FOUND"; then
-            echo "::notice::Extension not yet on Marketplace — proceeding with first publish."
-          else
-            echo "::error::vsce show failed unexpectedly (status $show_status):"
-            echo "$show_output"
-            exit 1
+          already=$(VSCE_OUTPUT="$show_output" TARGET_VERSION="$VERSION" node -e '
+            try {
+              const d = JSON.parse(process.env.VSCE_OUTPUT);
+              if (d && Array.isArray(d.versions)
+                  && d.versions.some(v => v && v.version === process.env.TARGET_VERSION)) {
+                process.stdout.write("yes");
+                return;
+              }
+            } catch (_) { /* fall through */ }
+            process.stdout.write("no");
+          ')
+          if [ "$already" = "yes" ]; then
+            echo "::notice::Version $VERSION already on Marketplace; skipping vsce publish."
+            exit 0
           fi
+          echo "::notice::Version $VERSION not on Marketplace (vsce show status=$show_status); proceeding with publish."
           args=(--azure-credential --packagePath "$VSIX")
           if [ "$IS_PRERELEASE" = "true" ]; then
             args=(--pre-release "${args[@]}")
