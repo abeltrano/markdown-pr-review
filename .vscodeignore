@@ -19,6 +19,9 @@ tsconfig.json
 # Mocha test config — not loaded at runtime.
 .mocharc.cjs
 
+# Coverage reports (c8). Generated locally / in CI; never part of the .vsix.
+coverage/
+
 # Marketplace icon regeneration source. The PNG is the wired asset;
 # the SVG lives in source control for regeneration but doesn't ship.
 media/marketplace.svg

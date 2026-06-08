@@ -26,6 +26,7 @@ npm install
 | `npm run build`   | Full type-check (tsc) + production bundle (esbuild)       |
 | `npm run lint`    | ESLint (flat config, zero-warning policy)                 |
 | `npm test`        | Mocha unit suite (`test/unit/**/*.test.ts`)               |
+| `npm run test:coverage` | Mocha under [c8](https://github.com/bcoe/c8) — writes `coverage/` and enforces thresholds |
 | `npm run package` | Build + produce a `.vsix` via `vsce`                      |
 
 `npm run watch` only runs esbuild, not `tsc` — run `npm run build`
@@ -125,6 +126,60 @@ npx mocha test/unit/renderer/renderer.test.ts
 (The `--import=tsx` loader is wired in
 [`.mocharc.cjs`](.mocharc.cjs), so no extra
 flags are needed.)
+
+### Coverage
+
+[`c8`](https://github.com/bcoe/c8) (V8 native coverage — no source
+instrumentation, so it composes cleanly with the existing `tsx`
+loader) runs the same Mocha suite and writes reports to `coverage/`:
+
+```bash
+npm run test:coverage          # text + HTML + lcov; fails on threshold regression
+start coverage/index.html      # browse the HTML report (Windows)
+open coverage/index.html       # macOS
+xdg-open coverage/index.html   # Linux
+```
+
+CI runs the same command on `ubuntu-latest` and uploads `lcov.info`
+to [Codecov](https://about.codecov.io/) via OIDC (no token needed
+for public repos).
+
+#### What's measured (and what isn't)
+
+c8 thresholds live in the `c8` block of
+[`package.json`](package.json) and gate the **unit-testable** surface:
+
+| Included                                    | Excluded                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------- |
+| `src/renderer/**`                           | Files that `import` from `'vscode'` (cannot run under mocha + tsx)  |
+| `src/selection-mapper/**`                   | `src/views/rendered-view/**` and `src/views/comment-input/**` (browser-only bundles) |
+| `src/redact.ts`, `src/pr-url-parser.ts`     | `src/types.ts` (interface-only, no executable code)                 |
+| `src/error-classification.ts`, `ado-errors.ts` | `src/ado-client.ts`, `src/comment-controller.ts` (testable but currently untested — see below) |
+
+Thresholds: **93% lines/statements**, **95% functions**, **80%
+branches**. They sit just under the current measured values
+(96%/98.5%/83.5%) so any meaningful regression in tested-surface
+coverage fails the `coverage` CI job.
+
+#### Adding tests for new code
+
+- A new pure module under `src/` is included in coverage automatically
+  via `c8.include: ["src/**/*.ts"]` — write tests for it so the
+  thresholds keep holding.
+- A new module that `import`s `'vscode'` cannot be exercised by the
+  Node + mocha + tsx pipeline. Either:
+  1. Refactor the pure logic into a separate file that does not
+     depend on `vscode`, test that file, and keep the thin
+     vscode-bound shim excluded; **or**
+  2. Add the new file to the `c8.exclude` list in
+     [`package.json`](package.json) and document the gap.
+
+The long-term direction is to grow the tested surface — both
+`ado-client.ts` (with `fetch` mocking) and `comment-controller.ts`
+(with stubs for the input view and ADO client) are reachable from
+Node tests and are excluded only because tests have not been written
+yet. Removing them from `c8.exclude` once tests land is the
+expected ratchet.
 
 ## Commits
 

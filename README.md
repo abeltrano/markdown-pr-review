@@ -1,6 +1,7 @@
 # Markdown PR Review
 
 [![CI](https://github.com/abeltrano/markdown-pr-review/actions/workflows/ci.yml/badge.svg)](https://github.com/abeltrano/markdown-pr-review/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/abeltrano/markdown-pr-review/branch/main/graph/badge.svg)](https://codecov.io/gh/abeltrano/markdown-pr-review)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 <!--
 Marketplace badges below will start resolving once the extension is
