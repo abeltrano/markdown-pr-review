@@ -236,9 +236,9 @@ gh api repos/abeltrano/markdown-pr-review/commits/<sha> \
 ## Pull requests
 
 `main` is protected: every change — even from the sole maintainer —
-lands via a pull request that must pass CI (`lint + build + test`)
-before merging. Direct pushes to `main` are not allowed for non-admin
-users; admins can bypass for emergencies.
+lands via a pull request that must pass CI (`lint + build + test` and
+`coverage`) before merging. Direct pushes to `main` are not allowed
+for non-admin users; admins can bypass for emergencies.
 
 A typical change looks like:
 
