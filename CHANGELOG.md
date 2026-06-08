@@ -12,11 +12,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [git-cliff]: https://git-cliff.org
 
 
-## [Unreleased]
+## [0.4.21] - 2026-06-08
+
+### 🧪 Testing
+
+- *(coverage)* Add c8 code coverage with Codecov upload ([#29](https://github.com/abeltrano/markdown-pr-review/pull/29))
+
+### ⚙️ CI
+
+- *(coverage)* Make coverage a required check, bump action to v6 ([#30](https://github.com/abeltrano/markdown-pr-review/pull/30))
+- *(release)* Add automated marketplace + GitHub release pipeline ([#32](https://github.com/abeltrano/markdown-pr-review/pull/32))
+
+### 📦 Dependencies
+
+- *(deps-dev)* Bump the types group across 1 directory with 2 updates ([#26](https://github.com/abeltrano/markdown-pr-review/pull/26))
+- *(deps-dev)* Bump @types/chai from 4.3.20 to 5.2.3 in the mocha group across 1 directory ([#27](https://github.com/abeltrano/markdown-pr-review/pull/27))
+
+### 🧹 Chores
+
+- *(ci)* Add one-time bootstrap workflow for marketplace publisher identity ([#31](https://github.com/abeltrano/markdown-pr-review/pull/31))
+
+## [0.4.20] - 2026-06-08
+
+### 🐛 Bug Fixes
+
+- *(renderer)* Make mermaid diagrams actually render end-to-end ([#28](https://github.com/abeltrano/markdown-pr-review/pull/28))
+
+## [0.4.19] - 2026-06-05
+
+### 🐛 Bug Fixes
+
+- Add explicit node types to tsconfig for TypeScript 6 compatibility ([#9](https://github.com/abeltrano/markdown-pr-review/pull/9))
+- *(renderer)* Recognise ADO's :::mermaid colon-fence block syntax ([#24](https://github.com/abeltrano/markdown-pr-review/pull/24))
 
 ### 📚 Documentation
 
 - *(readme)* Polish for Visual Studio Marketplace launch ([#19](https://github.com/abeltrano/markdown-pr-review/pull/19))
+- *(readme)* Replace demo placeholder with captured GIF ([#23](https://github.com/abeltrano/markdown-pr-review/pull/23))
 
 ### ⚙️ CI
 
@@ -29,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - *(deps-dev)* Bump @types/node from 20.19.41 to 25.9.1 in the types group across 1 directory ([#7](https://github.com/abeltrano/markdown-pr-review/pull/7))
 - *(deps)* Bump mermaid from 10.9.6 to 11.15.0 ([#12](https://github.com/abeltrano/markdown-pr-review/pull/12))
 - *(deps-dev)* Bump the eslint group across 1 directory with 3 updates ([#8](https://github.com/abeltrano/markdown-pr-review/pull/8))
+- *(deps-dev)* Bump chai from 4.5.0 to 6.2.2 in the mocha group across 1 directory ([#10](https://github.com/abeltrano/markdown-pr-review/pull/10))
+- *(deps-dev)* Bump @vscode/vsce from 2.32.0 to 3.9.2 in the vscode group across 1 directory ([#11](https://github.com/abeltrano/markdown-pr-review/pull/11))
+- *(deps-dev)* Bump esbuild from 0.25.12 to 0.28.0 ([#14](https://github.com/abeltrano/markdown-pr-review/pull/14))
+- *(deps)* Bump diff from 5.2.2 to 9.0.0 ([#13](https://github.com/abeltrano/markdown-pr-review/pull/13))
 
 ### 🧹 Chores
 
