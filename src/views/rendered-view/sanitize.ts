@@ -33,11 +33,23 @@ const HTML_CONFIG: Config = {
 // safe we still forbid <script> and the common inline event-handler
 // attributes; HTML inside the foreignObject is allowed via the html
 // profile but scripts and `on*` handlers are stripped.
+//
+// FORBID_CONTENTS is cleared because DOMPurify's default list includes
+// both `foreignobject` AND `style` — for elements on that list it
+// strips the *contents* even when the element itself is allowed. That
+// quietly wiped out mermaid's diagram labels (the HTML inside each
+// foreignObject) and mermaid's injected theme CSS (the rules inside
+// the inline <style> at the top of every diagram), so flowcharts
+// rendered as label-less boxes with default browser colors. Clearing
+// the list lets the inner content survive. <script> is still removed
+// because it is in FORBID_TAGS — stripping the tag also strips its
+// contents — so this does not loosen the script-injection defense.
 const SVG_CONFIG: Config = {
  USE_PROFILES: { html: true, svg: true, svgFilters: true },
  ADD_TAGS: ['foreignObject'],
  FORBID_TAGS: ['script'],
- FORBID_ATTR: ['onload', 'onclick', 'onerror', 'onmouseover', 'onfocus', 'onblur']
+ FORBID_ATTR: ['onload', 'onclick', 'onerror', 'onmouseover', 'onfocus', 'onblur'],
+ FORBID_CONTENTS: []
 };
 
 export function sanitizeHtml(html: string): string {

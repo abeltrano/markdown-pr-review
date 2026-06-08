@@ -3,13 +3,23 @@
 // info==='mermaid' with a CSP-safe wrapper. The diagram source is stored
 // in a `data-mermaid-source` attribute on the wrapper div; the webview's
 // mermaid-loader.ts reads it back at runtime via `dataset.mermaidSource`
-// (the HTML parser auto-decodes attribute entities) and feeds it to
-// mermaid.render().
+// and feeds it to mermaid.render() after URI-decoding.
 //
 // The attribute carrier replaces an earlier `<script type="text/x-mermaid">`
 // data-island, which DOMPurify (used as defense-in-depth on innerHTML in
 // the webview) silently strips because <script> is not in its safe-tag
-// list. Data attributes are inert and pass the sanitizer unchanged.
+// list.
+//
+// Why URI-encoding instead of HTML-entity escaping?
+//   DOMPurify also strips data-* attributes whose decoded value contains
+//   raw newlines or `<` / `>` characters — even though such values are
+//   legal in attribute syntax — because it treats them as XSS surface.
+//   Multi-line mermaid sources hit BOTH triggers (newlines between rows
+//   and `<-->` arrows), so HTML-entity-escaping the source produced an
+//   attribute that DOMPurify silently dropped, leaving an empty
+//   <div class="mermaid"> and a silently-missing diagram. URI-encoding
+//   yields a value of purely URI-safe ASCII (alphanumerics, `-_.!~*'()`
+//   and `%nn` escapes), which DOMPurify treats as inert.
 
 import type MarkdownIt from 'markdown-it';
 
@@ -51,8 +61,8 @@ export function applyMermaidFenceRule(md: MarkdownIt): void {
     passthroughAttrs += ` ${name}="${escapeForAttribute(value)}"`;
    }
   }
-  const escaped = escapeForAttribute(token.content);
-  return `<div class="mermaid"${passthroughAttrs} data-mermaid-source="${escaped}" data-mermaid-state="pending"></div>\n`;
+  const encoded = encodeURIComponent(token.content);
+  return `<div class="mermaid"${passthroughAttrs} data-mermaid-source="${encoded}" data-mermaid-state="pending"></div>\n`;
  };
 }
 

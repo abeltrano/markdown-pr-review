@@ -126,6 +126,35 @@ describe('renderer pipeline', () => {
  });
 
  describe('TC-037 — mermaid fence emits CSP-safe wrapper', () => {
+  // Pulls the decoded `data-mermaid-source` content out of the n-th
+  // rendered <div class="mermaid"> in the HTML so individual tests can
+  // assert on what mermaid-loader will actually see at runtime.
+  function extractMermaidSource(html: string, nth = 0): string {
+   const matches = [
+    ...html.matchAll(/<div\s+class="mermaid"[^>]*\sdata-mermaid-source="([^"]*)"/g)
+   ];
+   const value = matches[nth]?.[1] ?? '';
+   return decodeURIComponent(value);
+  }
+
+  // DOMPurify (defense-in-depth on the webview side) strips any data-*
+  // attribute whose decoded value contains raw newlines, `<`, or `>`.
+  // The fence rule defends against this by URI-encoding the source —
+  // every test that asserts on `data-mermaid-source` also enforces this
+  // invariant so a future regression in the encoding strategy can't
+  // silently re-introduce the "empty mermaid block" bug.
+  function attrValueDompurifySafe(html: string): boolean {
+   const matches = [
+    ...html.matchAll(/<div\s+class="mermaid"[^>]*\sdata-mermaid-source="([^"]*)"/g)
+   ];
+   if (matches.length === 0) return false;
+   for (const m of matches) {
+    const v = m[1] ?? '';
+    if (/[\n\r<>]/.test(v)) return false;
+   }
+   return true;
+  }
+
   it('emits a div.mermaid with embedded data-mermaid-source payload', () => {
    const md =
     '```mermaid\nsequenceDiagram\nA->>B: hi\n```\n';
@@ -134,21 +163,20 @@ describe('renderer pipeline', () => {
    expect(html).to.match(
     /<div\s+class="mermaid"[^>]*data-source-line-start="1"[^>]*data-source-line-end="4"[^>]*>/
    );
-   // The new attribute carrier (replaces an earlier <script type="text/x-mermaid">
-   // data-island that DOMPurify stripped). The diagram source is escaped
-   // for HTML-attribute context and recovered at runtime via
-   // element.dataset.mermaidSource (the HTML parser auto-decodes the
-   // attribute value back to the original characters).
+   // The diagram source is URI-encoded into a `data-mermaid-source`
+   // attribute (defense against DOMPurify, which strips data-* values
+   // with raw newlines or angle brackets). At runtime the webview
+   // mermaid-loader decodes it via decodeURIComponent(dataset.mermaidSource).
    expect(html).to.contain('data-mermaid-source="');
    expect(html).to.contain('data-mermaid-state="pending"');
-   expect(html).to.contain('sequenceDiagram');
-   expect(html).to.contain('A-&gt;&gt;B: hi');
+   expect(attrValueDompurifySafe(html)).to.equal(true);
+   expect(extractMermaidSource(html)).to.equal('sequenceDiagram\nA->>B: hi\n');
    // The old <script> carrier MUST NOT come back — DOMPurify would
    // strip it in the webview, producing the regression we just fixed.
    expect(html).to.not.contain('<script');
   });
 
-  it('escapes diagram source so &, <, >, " do not break out of the attribute', () => {
+  it('escapes diagram source so &, <, >, " never appear raw in the attribute value', () => {
    const md = [
     '```mermaid',
     'graph TD',
@@ -156,11 +184,14 @@ describe('renderer pipeline', () => {
     '```',
    ].join('\n');
    const { html } = render({ markdown: md });
-   // All four metacharacters must be escaped inside the attribute
-   // value so the source can never escape the attribute context.
+   // URI-encoded payload contains only the URI-safe ASCII alphabet
+   // (alphanumerics + -_.!~*'() + %nn escapes). The chars that would
+   // break out of the attribute context (`"`) or trigger DOMPurify
+   // stripping (`<`, `>`, `\n`) are all percent-encoded.
    expect(html).to.contain('data-mermaid-source="');
-   expect(html).to.contain('&quot;&lt;x &amp; y&gt;&quot;');
-   expect(html).to.not.contain('<x ');
+   expect(attrValueDompurifySafe(html)).to.equal(true);
+   // Source round-trips exactly back to what the author wrote.
+   expect(extractMermaidSource(html)).to.equal('graph TD\nA["<x & y>"] --> B\n');
   });
 
   it('regular language fences are not affected by the mermaid rule', () => {
@@ -175,7 +206,10 @@ describe('renderer pipeline', () => {
   it('preserves multiline subgraph source with HTML-label syntax', () => {
    // Mirrors a real-world failure: flowcharts with subgraphs and HTML
    // labels (the `<br/>` inside node labels) were rendered as raw text
-   // when the old <script> data-island was stripped by DOMPurify.
+   // when the old <script> data-island was stripped by DOMPurify, then
+   // rendered AS NOTHING when DOMPurify started stripping the
+   // entity-escaped data-mermaid-source attribute because of its raw
+   // newlines and angle brackets. The URI-encoded carrier survives.
    const md = [
     '```mermaid',
     'graph TB',
@@ -187,18 +221,25 @@ describe('renderer pipeline', () => {
    ].join('\n');
    const { html, mermaidBlockCount } = render({ markdown: md });
    expect(mermaidBlockCount).to.equal(1);
-   // Both `<` and `>` of the inner `<br/>` survive as escaped entities
-   // inside the attribute value; the HTML parser will decode them back
-   // when mermaid-loader.ts reads `dataset.mermaidSource`.
    expect(html).to.contain('data-mermaid-source="');
-   expect(html).to.contain('ADO Pipeline&lt;br/&gt;');
-   expect(html).to.contain('subgraph &quot;Interface Layer&quot;');
+   expect(attrValueDompurifySafe(html)).to.equal(true);
+   const source = extractMermaidSource(html);
+   expect(source).to.contain('subgraph "Interface Layer"');
+   expect(source).to.contain('ADO Pipeline<br/>(orchestration.yml)');
+   expect(source).to.contain('CLI Script<br/>(release.ps1)');
    // No raw <br/> escaping the attribute context.
    expect(html).to.not.contain('<br/>(orchestration.yml');
   });
  });
 
  describe('TC-038 — :::mermaid colon-fence block (ADO syntax)', () => {
+  function extractMermaidSource(html: string, nth = 0): string {
+   const matches = [
+    ...html.matchAll(/<div\s+class="mermaid"[^>]*\sdata-mermaid-source="([^"]*)"/g)
+   ];
+   return decodeURIComponent(matches[nth]?.[1] ?? '');
+  }
+
   it('emits a div.mermaid for a closed :::mermaid block', () => {
    const md = [
     ':::mermaid',
@@ -214,8 +255,7 @@ describe('renderer pipeline', () => {
    );
    expect(html).to.contain('data-mermaid-source="');
    expect(html).to.contain('data-mermaid-state="pending"');
-   expect(html).to.contain('sequenceDiagram');
-   expect(html).to.contain('A-&gt;&gt;B: hi');
+   expect(extractMermaidSource(html)).to.equal('sequenceDiagram\nA->>B: hi\n');
   });
 
   it('preserves verbatim multiline subgraph content with internal indentation', () => {
@@ -233,11 +273,12 @@ describe('renderer pipeline', () => {
    expect(mermaidBlockCount).to.equal(1);
    expect(html).to.contain('data-mermaid-source="');
    // Inner 4- and 8-space indentation of the diagram body is preserved
-   // (only the fence's OWN indentation would be stripped, and the
-   // opener here is at column 0 so there is nothing to strip).
-   expect(html).to.contain('    subgraph &quot;user mode&quot;');
-   expect(html).to.contain('        direction TB');
-   expect(html).to.contain('A[WESP service] &lt;--&gt; B[WESP app]');
+   // verbatim — only the fence's OWN indentation (zero here) is
+   // stripped. Decoded source round-trips exactly.
+   const source = extractMermaidSource(html);
+   expect(source).to.contain('    subgraph "user mode"');
+   expect(source).to.contain('        direction TB');
+   expect(source).to.contain('A[WESP service] <--> B[WESP app]');
   });
 
   it('treats EOF as an implicit close (no terminating :::)', () => {
@@ -250,7 +291,7 @@ describe('renderer pipeline', () => {
    const { html, mermaidBlockCount } = render({ markdown: md });
    expect(mermaidBlockCount).to.equal(1);
    expect(html).to.match(/<div\s+class="mermaid"[^>]*>/);
-   expect(html).to.contain('graph TD');
+   expect(extractMermaidSource(html)).to.contain('graph TD');
   });
 
   it('matches the opener case-insensitively', () => {
@@ -293,9 +334,10 @@ describe('renderer pipeline', () => {
    expect(mermaidBlockCount).to.equal(1);
    expect(html).to.match(/<div\s+class="mermaid"/);
    // The fence's own 3-space indentation is stripped; content lines
-   // start at column 0 in `data-mermaid-source`.
-   expect(html).to.contain('graph TD');
-   expect(html).to.not.contain('   graph TD');
+   // start at column 0 in the decoded source.
+   const source = extractMermaidSource(html);
+   expect(source).to.contain('graph TD');
+   expect(source).to.not.contain('   graph TD');
   });
 
   it('does NOT close on a 4-space-indented ::: line inside the body', () => {
@@ -310,7 +352,7 @@ describe('renderer pipeline', () => {
    const { mermaidBlockCount, html } = render({ markdown: md });
    expect(mermaidBlockCount).to.equal(1);
    // The indented ::: is part of the diagram body, not a closer.
-   expect(html).to.contain('A --&gt; B');
+   expect(extractMermaidSource(html)).to.contain('A --> B');
    // The block extends across all 5 lines (open + 3 body + close).
    expect(html).to.match(/data-source-line-start="1"[^>]*data-source-line-end="5"/);
   });
@@ -332,8 +374,8 @@ describe('renderer pipeline', () => {
    expect(mermaidBlockCount).to.equal(2);
    const divCount = (html.match(/<div\s+class="mermaid"/g) ?? []).length;
    expect(divCount).to.equal(2);
-   expect(html).to.contain('graph TD');
-   expect(html).to.contain('sequenceDiagram');
+   expect(extractMermaidSource(html, 0)).to.contain('graph TD');
+   expect(extractMermaidSource(html, 1)).to.contain('sequenceDiagram');
   });
 
   it('does not interfere with a regular paragraph that happens to contain :::', () => {
