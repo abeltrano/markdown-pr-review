@@ -2,7 +2,7 @@
   "name": "markdown-pr-review",
   "displayName": "Markdown PR Review",
   "description": "Review markdown pull-request files in a rendered view and post comments anchored to raw line ranges.",
-  "version": "0.4.20",
+  "version": "0.4.21",
   "publisher": "abeltrano",
   "license": "MIT",
   "repository": {
