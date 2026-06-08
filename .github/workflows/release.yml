@@ -257,15 +257,15 @@ jobs:
           show_status=0
           show_output=$(vsce show abeltrano.markdown-pr-review --json 2>&1) || show_status=$?
           already=$(VSCE_OUTPUT="$show_output" TARGET_VERSION="$VERSION" node -e '
+            let result = "no";
             try {
               const d = JSON.parse(process.env.VSCE_OUTPUT);
               if (d && Array.isArray(d.versions)
                   && d.versions.some(v => v && v.version === process.env.TARGET_VERSION)) {
-                process.stdout.write("yes");
-                return;
+                result = "yes";
               }
             } catch (_) { /* fall through */ }
-            process.stdout.write("no");
+            process.stdout.write(result);
           ')
           if [ "$already" = "yes" ]; then
             echo "::notice::Version $VERSION already on Marketplace; skipping vsce publish."
