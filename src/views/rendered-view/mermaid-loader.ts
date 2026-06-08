@@ -45,17 +45,33 @@ export async function initMermaid(opts: MermaidLoaderOptions): Promise<void> {
   if (!mermaidConfigured) {
    mermaid.initialize({
     startOnLoad: false,
-    theme: 'default',
-    securityLevel: 'strict'
+    theme: pickMermaidTheme(),
+    securityLevel: 'strict',
+    htmlLabels: false,
+    flowchart: { htmlLabels: false }
    });
    mermaidConfigured = true;
   }
   for (let i = 0; i < fresh.length; i++) {
    const container = fresh[i]!;
-   // HTML attribute values are auto-decoded by the parser, so the
-   // escaped &amp;/&lt;/&gt;/&quot; emitted by the host fence rule
-   // round-trip back to the original characters here.
-   const source = container.dataset.mermaidSource ?? '';
+   // The source is URI-encoded by the host fence rule (see
+   // mermaid-fence-rule.ts). URI encoding is required because
+   // DOMPurify — applied to the full rendered HTML on the webview
+   // side as defense-in-depth — strips data-* attributes whose
+   // decoded value contains raw newlines or `<` / `>` characters,
+   // which a multi-line mermaid source typically does. URI-encoding
+   // produces a purely URI-safe ASCII payload that round-trips
+   // cleanly through DOMPurify and the HTML parser.
+   const encoded = container.dataset.mermaidSource ?? '';
+   let source: string;
+   try {
+    source = decodeURIComponent(encoded);
+   } catch {
+    // Malformed %-sequence — fall back to the raw value so the
+    // diagram fails inside mermaid with an explanatory error
+    // instead of disappearing.
+    source = encoded;
+   }
    setState(container, 'rendering');
    try {
     const id = `mermaid-${i}-${Date.now().toString(36)}`;
@@ -80,4 +96,23 @@ function escapeHtml(s: string): string {
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;');
+}
+
+// Pick a mermaid built-in theme that approximately matches the current
+// VS Code color theme. VS Code injects `vscode-light` / `vscode-dark` /
+// `vscode-high-contrast` / `vscode-high-contrast-light` on the body
+// element of every webview, so we can branch on that without needing
+// to read CSS variables (which would not be available until layout).
+// We only call this on the first initMermaid run; mermaid.initialize
+// supports being called only once per page, so subsequent theme
+// switches require a window reload.
+function pickMermaidTheme(): 'default' | 'dark' | 'neutral' {
+ const body = document.body;
+ if (!body) return 'default';
+ if (body.classList.contains('vscode-high-contrast') &&
+     !body.classList.contains('vscode-high-contrast-light')) {
+  return 'dark';
+ }
+ if (body.classList.contains('vscode-dark')) return 'dark';
+ return 'default';
 }
