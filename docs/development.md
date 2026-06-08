@@ -28,11 +28,12 @@ round-trip to real ADO PR threads.
 
 ```powershell
 npm install
-npm run watch      # esbuild only — re-bundles src/ on save
-npm run build      # tsc --noEmit + esbuild (production)
-npm run lint       # ESLint flat config; CI enforces zero warnings
-npm test           # mocha (tsx loader) against test/unit/**/*.test.ts
-npm run package    # build + vsce package — produces a .vsix (gitignored)
+npm run watch         # esbuild only — re-bundles src/ on save
+npm run build         # tsc --noEmit + esbuild (production)
+npm run lint          # ESLint flat config; CI enforces zero warnings
+npm test              # mocha (tsx loader) against test/unit/**/*.test.ts
+npm run test:coverage # mocha under c8; writes coverage/ and enforces thresholds
+npm run package       # build + vsce package — produces a .vsix (gitignored)
 ```
 
 Run one test file ([`.mocharc.cjs`](../.mocharc.cjs) wires the `tsx`
@@ -45,6 +46,18 @@ npx mocha test/unit/selection-mapper/normalize.test.ts
 
 `npm run watch` does **not** run `tsc`. Periodically run
 `npm run build` to catch type errors esbuild silently strips.
+
+`npm run test:coverage` uses [`c8`](https://github.com/bcoe/c8)
+(V8 native coverage — pairs cleanly with the `tsx` loader because it
+collects coverage from the running V8 instance rather than rewriting
+sources). Configuration lives in the `c8` block of
+[`package.json`](../package.json). It excludes files that `import`
+from `'vscode'` (cannot run under mocha + tsx), the browser-only
+webview bundles in `src/views/rendered-view/` and
+`src/views/comment-input/`, and `src/types.ts` (interface-only).
+Thresholds (93% lines/statements, 95% functions, 80% branches) gate
+the unit-testable surface — CI's `coverage` job fails on regression
+and uploads `lcov.info` to Codecov.
 
 Press **F5** in VS Code to launch the Extension Development Host with
 the `Run Extension` debug config. The dev host inherits your real VS

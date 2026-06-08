@@ -178,7 +178,49 @@
     "lint": "eslint .",
     "package": "npm run build && vsce package --no-yarn",
     "test": "mocha",
+    "test:coverage": "c8 mocha",
     "release:notes": "git-cliff --output CHANGELOG.md"
+  },
+  "c8": {
+    "all": true,
+    "include": [
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "**/*.d.ts",
+      "src/types.ts",
+      "src/extension.ts",
+      "src/session-manager.ts",
+      "src/command-registry.ts",
+      "src/auth-manager.ts",
+      "src/comment-input-view-provider.ts",
+      "src/error-utils.ts",
+      "src/logger.ts",
+      "src/mdpr-uri.ts",
+      "src/stale-pr-watcher.ts",
+      "src/status-bar.ts",
+      "src/views/csp.ts",
+      "src/views/custom-editor-provider.ts",
+      "src/views/file-decoration-provider.ts",
+      "src/views/file-tree-provider.ts",
+      "src/views/rendered-view/**",
+      "src/views/comment-input/**",
+      "src/ado-client.ts",
+      "src/comment-controller.ts"
+    ],
+    "reporter": [
+      "text",
+      "text-summary",
+      "html",
+      "lcov"
+    ],
+    "reports-dir": "coverage",
+    "check-coverage": true,
+    "lines": 93,
+    "statements": 93,
+    "functions": 95,
+    "branches": 80,
+    "excludeAfterRemap": true
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -190,6 +232,7 @@
     "@types/vscode": "^1.85.0",
     "@vscode/codicons": "^0.0.45",
     "@vscode/vsce": "^3.9.2",
+    "c8": "^11.0.0",
     "chai": "^6.2.2",
     "esbuild": "^0.28.0",
     "eslint": "^10.4.1",
