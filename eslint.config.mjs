@@ -99,5 +99,18 @@ export default tseslint.config(
     exports: 'writable'
    }
   }
+ },
+ {
+  // Node ESM utility scripts under scripts/** — same Node globals
+  // (process, etc.) as the CommonJS block above but in module mode.
+  files: ['scripts/**/*.mjs'],
+  languageOptions: {
+   ecmaVersion: 2022,
+   sourceType: 'module',
+   globals: {
+    process: 'readonly',
+    console: 'readonly'
+   }
+  }
  }
 );

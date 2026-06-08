@@ -269,6 +269,22 @@ a migration plan for the live-restyle feature.
 5. Computing `LineOffset` with 0-indexed line numbers — ADO accepts
    the call and silently anchors to the wrong line.
 
+## Releasing
+
+Releases are end-to-end automated. A signed annotated `vX.Y.Z` tag
+push triggers
+[`.github/workflows/release.yml`](../.github/workflows/release.yml),
+which publishes the `.vsix` to the Visual Studio Marketplace (via
+federated Microsoft Entra ID — no PAT) and creates a matching
+GitHub Release with the `.vsix` attached.
+
+The full procedure (release-bump PR, signed tag, reruns,
+pre-releases, and the one-time Azure bootstrap) is documented in
+[**CONTRIBUTING.md → Cutting a release**](../CONTRIBUTING.md#cutting-a-release).
+The workflow's header comment explains the privilege-separation
+trust model (low-priv `package` job + elevated `publish` job with no
+checkout).
+
 ## Code conventions
 
 See [`docs/coding-style.md`](coding-style.md) for the full
