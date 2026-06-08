@@ -266,25 +266,107 @@ A typical change looks like:
 
 Release notes live in [`CHANGELOG.md`](CHANGELOG.md), grouped by
 release tag, and are generated from Conventional Commits via
-[git-cliff](https://git-cliff.org/). After your PR is squash-merged
-to `main`, regenerate the file with:
-
-```bash
-npm run release:notes
-```
-
-The script runs `git-cliff --output CHANGELOG.md`, which walks every
-commit between annotated `vX.Y.Z` tags and re-emits the file. Open a
-follow-up PR with the regenerated file (or fold it into the next
-version bump). When cutting a release, bump `version` in
-`package.json`, annotate a `vX.Y.Z` tag on the matching commit
-(`git tag -a -m "vX.Y.Z: <one-line summary>" vX.Y.Z`), push the tag
-(`git push --tags`), and re-run the script before opening the
-release PR so the new version section appears at the top.
+[git-cliff](https://git-cliff.org/). The file is only updated as
+part of a release PR — see [Cutting a release](#cutting-a-release)
+below. Day-to-day feature PRs do not need to touch `CHANGELOG.md`.
 
 Conversation threads opened on a PR must be resolved before the PR
 can merge. Squash-merging is the only enabled merge strategy, so
 each PR becomes a single Conventional-Commit-style entry on `main`.
+
+## Cutting a release
+
+Releases are end-to-end automated by
+[`.github/workflows/release.yml`](.github/workflows/release.yml): a
+signed annotated tag push triggers a workflow that packages the
+extension, publishes to the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=abeltrano.markdown-pr-review)
+via federated Microsoft Entra ID (no PAT), and creates a matching
+GitHub Release with the `.vsix` attached.
+
+Two manual steps frame the automation:
+
+### 1. Open a release-bump PR
+
+```bash
+# Pick the next version per semver. Bump in package.json.
+npm version <X.Y.Z> --no-git-tag-version
+
+# Regenerate CHANGELOG with the new section at the top.
+npx git-cliff --tag v<X.Y.Z> --output CHANGELOG.md
+
+# Stage, commit (signed), open PR.
+git checkout -b chore/release-v<X.Y.Z>
+git add package.json package-lock.json CHANGELOG.md
+git commit -S -m "chore(release): bump version to <X.Y.Z>"
+./scripts/new-pr.ps1
+```
+
+The release-bump PR is a regular PR: it must pass the same
+`lint + build + test` and `coverage` checks and be reviewed/merged
+through the normal branch protection. Merge it the moment CI is green.
+
+### 2. Push the signed annotated tag
+
+After the bump PR is on `main`:
+
+```bash
+git checkout main && git pull
+# Tag the bump commit. `-s` produces a signed annotated tag.
+git tag -s v<X.Y.Z> -m "v<X.Y.Z>"
+git push origin v<X.Y.Z>
+```
+
+The `Release` workflow fires immediately. It:
+
+1. **`package` job** (low-privilege: `contents: read` only) — checks
+   out the tag, verifies it is an annotated tag reachable from
+   `origin/main`, verifies `package.json` publisher and version
+   match, runs `lint + build + test:coverage`, builds the `.vsix`,
+   extracts the matching CHANGELOG section, and uploads everything
+   as a workflow artifact.
+2. **`publish` job** (elevated: `contents: write` + `id-token: write`
+   + `environment: marketplace`) — downloads the artifact, logs in to
+   Azure via OIDC, runs `vsce publish --azure-credential`, and
+   creates/updates the GitHub Release with the `.vsix` attached.
+
+The publish job has **no checkout** and installs only `@vscode/vsce`
+globally, so the only code that runs with elevated permissions is
+`vsce` itself and the GitHub CLI. If a project dependency were
+compromised, it could not mint Azure OIDC tokens or write to git.
+
+### Reruns and recovery
+
+If the `publish` job fails after the marketplace upload succeeded
+(e.g., a flaky `gh release create`), re-fire with the same tag:
+
+```bash
+gh workflow run Release -f tag=v<X.Y.Z>
+```
+
+The publish step detects the existing marketplace version via
+`vsce show` and skips re-upload; the GitHub Release step upserts.
+The workflow's `concurrency` group serializes runs for the same tag
+so a re-fire never races with an in-flight publish.
+
+### Pre-releases
+
+A tag matching `vX.Y.Z-<suffix>` (e.g., `v0.5.0-rc.1`) is treated as
+a marketplace pre-release (`vsce publish --pre-release`) and a
+GitHub Release marked `prerelease`. The package-version check still
+applies: `package.json` `version` must read `X.Y.Z-<suffix>`.
+
+### One-time bootstrap
+
+For the publish job's OIDC login to work, the Azure App Registration
+`github-actions-markdown-pr-review-publish` must have a federated
+credential whose subject is
+`repo:abeltrano/markdown-pr-review:environment:marketplace`, the
+service principal must be a member of the marketplace publisher
+`abeltrano`, and the repo must have the `marketplace` environment
+plus repo variables `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`. This
+is one-time setup per repo; see the release workflow's header
+comment for the trust model.
 
 ## Security
 

@@ -5,12 +5,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 <!--
 Marketplace badges below will start resolving once the extension is
-published to the Visual Studio Marketplace under the `anbeltra`
+published to the Visual Studio Marketplace under the `abeltrano`
 publisher. They are intentionally left in place pre-publish so the
 README is launch-ready.
 -->
-[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/anbeltra.markdown-pr-review?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=anbeltra.markdown-pr-review)
-[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/anbeltra.markdown-pr-review)](https://marketplace.visualstudio.com/items?itemName=anbeltra.markdown-pr-review)
+[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/abeltrano.markdown-pr-review?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=abeltrano.markdown-pr-review)
+[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/abeltrano.markdown-pr-review)](https://marketplace.visualstudio.com/items?itemName=abeltrano.markdown-pr-review)
 
 > ⚠️ **Unofficial community extension.** Not affiliated with, endorsed
 > by, or supported by Microsoft, the Azure DevOps team, GitHub, or any

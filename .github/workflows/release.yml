@@ -1,0 +1,290 @@
+# Tag-triggered release pipeline. Publishes the .vsix to the Visual Studio
+# Marketplace and creates a matching GitHub Release with the .vsix attached
+# so the marketplace artifact is byte-identical to the release-page asset.
+#
+# Authentication: federated Microsoft Entra ID via GitHub OIDC. The
+# `marketplace` environment is the trust boundary — the App Registration's
+# federated credential subject is
+#   `repo:abeltrano/markdown-pr-review:environment:marketplace`
+# so a token can only be minted in the `publish` job (which is the only
+# job with `environment: marketplace`). To add deployment approvals
+# later, configure reviewers on the `marketplace` environment in repo
+# settings.
+#
+# Trust posture / privilege separation:
+#  - `package` job: contents:read only, no id-token, persist-credentials
+#    false. This is where `npm ci`, lint, build, test, and `vsce package`
+#    run — i.e., where untrusted lifecycle scripts and dependencies
+#    execute. Even if a dep is compromised, it cannot mint an Azure
+#    OIDC token or push to git.
+#  - `publish` job: contents:write + id-token:write + environment, but
+#    does NOT check out the repo. It downloads only the `.vsix` and
+#    release notes artifact from the `package` job and installs `vsce`
+#    globally. Minimises code that runs with elevated perms.
+#
+# Manual usage: bump `package.json` version in a PR
+# (`chore(release): bump version to X.Y.Z`), regenerate `CHANGELOG.md`
+# via `npm run release:notes`, merge, then push a signed annotated tag
+# matching the version:
+#   git tag -s vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z
+#
+# Rerun policy: if the publish job fails after marketplace upload
+# succeeded (e.g., a flaky `gh release create`), re-fire with the same
+# tag via `gh workflow run Release -f tag=vX.Y.Z`. The publish step
+# detects the existing marketplace version and skips upload; the GitHub
+# Release step upserts.
+#
+# Follow-up hardening (out of scope for this workflow):
+#  - Configure a repository tag ruleset that restricts `v*` tag pushes
+#    to repo admins and rejects tag updates/deletes. This is the
+#    canonical defence against an attacker pushing a malicious tag.
+#  - Pin third-party actions by SHA. The repo currently uses major-tag
+#    pins (@v6, @v8) by convention — change globally if/when desired.
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing signed annotated tag to (re-)release, e.g. v0.4.21
+        required: true
+
+# Serialize runs for the same tag so a re-fire can't race with an
+# in-flight publish. Different tags can publish in parallel.
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.ref.outputs.tag }}
+      version: ${{ steps.ref.outputs.version }}
+      is_prerelease: ${{ steps.ref.outputs.is_prerelease }}
+      vsix: ${{ steps.package.outputs.vsix }}
+    steps:
+      - name: Resolve target tag
+        id: ref
+        # Pass inputs.tag through env to avoid shell injection — never
+        # interpolate untrusted workflow_dispatch input directly into a
+        # shell command body.
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-$GITHUB_REF_NAME}"
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.+-]+)?$ ]]; then
+            echo "::error::Tag '$tag' does not match vX.Y.Z[-suffix]"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+- ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.ref.outputs.tag }}
+          fetch-depth: 0
+          # Don't leave a GITHUB_TOKEN behind in the runner's git config
+          # for downstream steps (npm ci, build) to potentially exfiltrate.
+          persist-credentials: false
+
+      - name: Verify tag is annotated and reachable from main
+        shell: bash
+        env:
+          TAG: ${{ steps.ref.outputs.tag }}
+        run: |
+          set -euo pipefail
+          obj=$(git cat-file -t "refs/tags/$TAG" 2>/dev/null || echo "missing")
+          if [ "$obj" != "tag" ]; then
+            echo "::error::$TAG is not an annotated tag (got: $obj). Use 'git tag -s' or 'git tag -a'."
+            exit 1
+          fi
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor HEAD refs/remotes/origin/main; then
+            echo "::error::Tag $TAG points at a commit not reachable from origin/main"
+            exit 1
+          fi
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Verify package.json publisher and version
+        shell: bash
+        env:
+          EXPECTED_VERSION: ${{ steps.ref.outputs.version }}
+        run: |
+          set -euo pipefail
+          publisher=$(node -p "require('./package.json').publisher")
+          version=$(node -p "require('./package.json').version")
+          if [ "$publisher" != "abeltrano" ]; then
+            echo "::error::package.json publisher is '$publisher', expected 'abeltrano'"
+            exit 1
+          fi
+          if [ "$version" != "$EXPECTED_VERSION" ]; then
+            echo "::error::package.json version ($version) does not match tag version ($EXPECTED_VERSION)"
+            exit 1
+          fi
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Build (tsc --noEmit + esbuild --production)
+        run: npm run build
+
+      - name: Test with coverage (c8 mocha)
+        run: npm run test:coverage
+
+      - name: Package .vsix
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx vsce package --no-yarn
+          vsix=$(ls *.vsix | head -n1)
+          if [ -z "$vsix" ]; then
+            echo "::error::vsce package produced no .vsix"
+            exit 1
+          fi
+          echo "vsix=$vsix" >> "$GITHUB_OUTPUT"
+          ls -la "$vsix"
+
+      - name: Extract release notes from CHANGELOG.md
+        shell: bash
+        env:
+          VERSION: ${{ steps.ref.outputs.version }}
+        run: |
+          set -euo pipefail
+          node scripts/extract-changelog.mjs "$VERSION" > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for version $VERSION"
+            exit 1
+          fi
+          echo "--- release notes preview ---"
+          cat release-notes.md
+          echo "-----------------------------"
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: |
+            ${{ steps.package.outputs.vsix }}
+            release-notes.md
+          retention-days: 7
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    # `environment: marketplace` is what the federated credential subject
+    # pins to. Without this line, azure/login gets a token whose `sub`
+    # claim is `repo:.../ref:refs/tags/vX.Y.Z` and federation rejects it.
+    environment:
+      name: marketplace
+      url: https://marketplace.visualstudio.com/items?itemName=abeltrano.markdown-pr-review
+    steps:
+      # Deliberately no checkout. The publish job only needs the
+      # pre-built .vsix from the `package` job artifact. Avoiding source
+      # access here means even a vsce or runner compromise can't
+      # exfiltrate repo source or commit on our behalf.
+      - name: Download release bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: release-bundle
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install vsce (global, no project deps)
+        run: npm install --global @vscode/vsce@^3.9.2
+
+      - name: Azure login (federated, no subscription)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Publish to Marketplace (skip if version already published)
+        shell: bash
+        env:
+          VSIX: ${{ needs.package.outputs.vsix }}
+          VERSION: ${{ needs.package.outputs.version }}
+          IS_PRERELEASE: ${{ needs.package.outputs.is_prerelease }}
+        run: |
+          set -euo pipefail
+          # vsce show returns nonzero with a "not found" message for an
+          # extension that's never been published. Treat that as "needs
+          # first publish". Any other nonzero (network, auth) fails loud.
+          show_status=0
+          show_output=$(vsce show abeltrano.markdown-pr-review --json 2>&1) || show_status=$?
+          if [ "$show_status" -eq 0 ]; then
+            already=$(node -e "const d=JSON.parse(process.argv[1]); process.stdout.write((d.versions||[]).some(v => v.version === process.argv[2]) ? 'yes' : 'no')" "$show_output" "$VERSION")
+            if [ "$already" = "yes" ]; then
+              echo "::notice::Version $VERSION already on Marketplace; skipping vsce publish."
+              exit 0
+            fi
+          elif echo "$show_output" | grep -qiE "not (found|exist)|404|ERR_EXTENSION_NOT_FOUND"; then
+            echo "::notice::Extension not yet on Marketplace — proceeding with first publish."
+          else
+            echo "::error::vsce show failed unexpectedly (status $show_status):"
+            echo "$show_output"
+            exit 1
+          fi
+          args=(--azure-credential --packagePath "$VSIX")
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            args=(--pre-release "${args[@]}")
+          fi
+          vsce publish "${args[@]}"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.package.outputs.tag }}
+          VSIX: ${{ needs.package.outputs.vsix }}
+          IS_PRERELEASE: ${{ needs.package.outputs.is_prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          extra=()
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            extra+=(--prerelease)
+          fi
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "Release $TAG already exists; updating notes + attachments."
+            gh release upload "$TAG" "$VSIX" --clobber -R "$GITHUB_REPOSITORY"
+            gh release edit   "$TAG" --notes-file release-notes.md "${extra[@]}" -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file release-notes.md \
+              --verify-tag \
+              "${extra[@]}" \
+              -R "$GITHUB_REPOSITORY" \
+              "$VSIX"
+          fi
