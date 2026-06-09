@@ -4,7 +4,7 @@
 header = """
 # Changelog
 
-All notable changes to the Markdown PR Review extension are documented
+All notable changes to the Azure DevOps Markdown PR Review extension are documented
 here. This file is generated from the Conventional Commits in the
 [git history](https://github.com/abeltrano/markdown-pr-review/commits/main)
 via [git-cliff]. To regenerate after merging a PR or cutting a release,

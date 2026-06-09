@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Markdown PR Review extension are documented
+All notable changes to the Azure DevOps Markdown PR Review extension are documented
 here. This file is generated from the Conventional Commits in the
 [git history](https://github.com/abeltrano/markdown-pr-review/commits/main)
 via [git-cliff]. To regenerate after merging a PR or cutting a release,
@@ -12,16 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [git-cliff]: https://git-cliff.org
 
 
+## [0.4.23] - 2026-06-09
+
+### 🐛 Bug Fixes
+
+- *(release)* Change displayName to `Azure DevOps Markdown PR Review` to avoid marketplace collision
+
 ## [0.4.22] - 2026-06-09
 
 ### 🐛 Bug Fixes
 
 - *(release)* Handle 'vsce show' printing 'undefined' for unpublished extensions ([#34](https://github.com/abeltrano/markdown-pr-review/pull/34))
 - *(release)* Replace top-level return with mutable result in vsce show parse ([#35](https://github.com/abeltrano/markdown-pr-review/pull/35))
-
-### 🧹 Chores
-
-- *(release)* Rename extension `name` to `md-pr-review` to avoid marketplace collision with an existing extension on the bare `markdown-pr-review` slug (publisher and `displayName` are unchanged)
 
 ## [0.4.21] - 2026-06-08
 

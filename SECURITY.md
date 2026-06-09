@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the latest published version of **Markdown PR Review** receives
+Only the latest published version of **Azure DevOps Markdown PR Review** receives
 security updates. Please upgrade before reporting an issue.
 
 | Version | Supported          |
