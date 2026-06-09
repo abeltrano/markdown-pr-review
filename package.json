@@ -2,7 +2,7 @@
   "name": "md-pr-review",
   "displayName": "Azure DevOps Markdown PR Review",
   "description": "Review markdown pull-request files in a rendered view and post comments anchored to raw line ranges.",
-  "version": "0.4.23",
+  "version": "0.4.24",
   "publisher": "abeltrano",
   "license": "MIT",
   "repository": {
@@ -15,7 +15,7 @@
   "homepage": "https://github.com/abeltrano/markdown-pr-review#readme",
   "icon": "media/marketplace.png",
   "galleryBanner": {
-    "color": "#0078d4",
+    "color": "#000000",
     "theme": "dark"
   },
   "engines": {

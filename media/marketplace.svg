@@ -6,23 +6,32 @@
       magick -background none -density 1536 media/marketplace.svg \
           -resize 512x512 PNG32:media/marketplace.png
 
-    Notes:
+    Design notes:
     * The marketplace icon must be PNG (the VS Code marketplace rejects
       SVG for security reasons). We keep the SVG here purely as the
       regenerable source.
     * 512x512 covers 3x HiDPI / Retina-class displays where the
       marketplace can render the icon at substantial physical pixel
       density. PNG compression keeps a flat-color design like this
-      under 15 KB at 512x512.
+      well under 15 KB at 512x512.
     * The -background flag MUST precede the input file so it applies
-      during SVG rasterization; otherwise transparent regions are
-      flattened to white.
-    * Design is full-bleed (no rounded corners) so VS Code's UI chrome
-      applies its own corner mask without exposing transparent pixels.
+      during SVG rasterization. We use `none` so the rounded corners
+      stay transparent (only the inner rect fills); without it,
+      ImageMagick paints the corners white.
+    * Filled pure-black tile (#000000) with white strokes follows the
+      2025 dev-tool marketplace convention (Bun, Prettier, Vercel,
+      Linear-class extensions). White-on-black gives the highest
+      contrast ratio (~21:1) so the glyph stays crisp at every render
+      size, and the tile reads identically on light and dark VS Code
+      themes (the marketplace `icon` field only accepts one image —
+      no `{light,dark}` variants — so theme-neutral is required).
+    * Rounded corners at rx/ry=18 on a 128 viewBox is ~14%, matching
+      the iOS/macOS app-icon convention most modern marketplace tiles
+      follow.
   -->
 
-  <!-- Tile background: slate, full-bleed -->
-  <rect width="128" height="128" fill="#1E293B"/>
+  <!-- Filled black background with rounded corners -->
+  <rect width="128" height="128" rx="18" ry="18" fill="#000000"/>
 
   <!-- Speech bubble + M↓ glyph, harmonized with the activity-bar icon -->
   <g fill="none" stroke="#FFFFFF" stroke-width="5.5"
