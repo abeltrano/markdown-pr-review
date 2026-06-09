@@ -9,8 +9,8 @@ published to the Visual Studio Marketplace under the `abeltrano`
 publisher. They are intentionally left in place pre-publish so the
 README is launch-ready.
 -->
-[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/abeltrano.markdown-pr-review?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=abeltrano.markdown-pr-review)
-[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/abeltrano.markdown-pr-review)](https://marketplace.visualstudio.com/items?itemName=abeltrano.markdown-pr-review)
+[![Visual Studio Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/abeltrano.md-pr-review?label=marketplace)](https://marketplace.visualstudio.com/items?itemName=abeltrano.md-pr-review)
+[![Visual Studio Marketplace Installs](https://img.shields.io/visual-studio-marketplace/i/abeltrano.md-pr-review)](https://marketplace.visualstudio.com/items?itemName=abeltrano.md-pr-review)
 
 > ⚠️ **Unofficial community extension.** Not affiliated with, endorsed
 > by, or supported by Microsoft, the Azure DevOps team, GitHub, or any
@@ -81,12 +81,12 @@ out via `telemetry.telemetryLevel` per the
 Or from the command line:
 
 ```powershell
-code --install-extension anbeltra.markdown-pr-review
+code --install-extension abeltrano.md-pr-review
 ```
 
 ### Sideload a `.vsix` (fallback / pre-release builds)
 
-1. Download the latest `markdown-pr-review-*.vsix` from the
+1. Download the latest `md-pr-review-*.vsix` from the
    [Releases page](https://github.com/abeltrano/markdown-pr-review/releases)
    (or build one locally — see [Development](#development)).
 2. In VS Code: **Extensions** sidebar → `...` menu →
@@ -96,7 +96,7 @@ code --install-extension anbeltra.markdown-pr-review
 Or from the command line:
 
 ```powershell
-code --install-extension .\markdown-pr-review-*.vsix
+code --install-extension .\md-pr-review-*.vsix
 ```
 
 ---

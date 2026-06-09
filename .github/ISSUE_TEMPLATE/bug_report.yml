@@ -17,7 +17,7 @@ body:
       label: Extension version
       description: |
         Find it in the Extensions side bar, or run:
-        `code --list-extensions --show-versions | findstr markdown-pr-review`
+        `code --list-extensions --show-versions | findstr md-pr-review`
       placeholder: e.g. 0.4.15
     validations:
       required: true

@@ -204,7 +204,7 @@ jobs:
     # claim is `repo:.../ref:refs/tags/vX.Y.Z` and federation rejects it.
     environment:
       name: marketplace
-      url: https://marketplace.visualstudio.com/items?itemName=abeltrano.markdown-pr-review
+      url: https://marketplace.visualstudio.com/items?itemName=abeltrano.md-pr-review
     steps:
       # Deliberately no checkout. The publish job only needs the
       # pre-built .vsix from the `package` job artifact. Avoiding source
@@ -255,7 +255,7 @@ jobs:
           # double-publish.
           show_output=""
           show_status=0
-          show_output=$(vsce show abeltrano.markdown-pr-review --json 2>&1) || show_status=$?
+          show_output=$(vsce show abeltrano.md-pr-review --json 2>&1) || show_status=$?
           already=$(VSCE_OUTPUT="$show_output" TARGET_VERSION="$VERSION" node -e '
             let result = "no";
             try {
