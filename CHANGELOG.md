@@ -12,11 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [git-cliff]: https://git-cliff.org
 
 
+## [0.4.24] - 2026-06-09
+
+### 🐛 Bug Fixes
+
+- *(icon)* Refresh marketplace tile with sleek black background
+
+### 🧹 Chores
+
+- *(ci)* Bump release-workflow actions to Node 24 majors ([#38](https://github.com/abeltrano/markdown-pr-review/pull/38))
+
 ## [0.4.23] - 2026-06-09
 
 ### 🐛 Bug Fixes
 
-- *(release)* Change displayName to `Azure DevOps Markdown PR Review` to avoid marketplace collision
+- *(release)* Change displayName to `Azure DevOps Markdown PR Review` and bump to 0.4.23 ([#37](https://github.com/abeltrano/markdown-pr-review/pull/37))
 
 ## [0.4.22] - 2026-06-09
 
