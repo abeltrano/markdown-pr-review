@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [git-cliff]: https://git-cliff.org
 
 
+## [0.4.22] - 2026-06-09
+
+### 🐛 Bug Fixes
+
+- *(release)* Handle 'vsce show' printing 'undefined' for unpublished extensions ([#34](https://github.com/abeltrano/markdown-pr-review/pull/34))
+- *(release)* Replace top-level return with mutable result in vsce show parse ([#35](https://github.com/abeltrano/markdown-pr-review/pull/35))
+
+### 🧹 Chores
+
+- *(release)* Rename extension `name` to `md-pr-review` to avoid marketplace collision with an existing extension on the bare `markdown-pr-review` slug (publisher and `displayName` are unchanged)
+
 ## [0.4.21] - 2026-06-08
 
 ### 🧪 Testing

@@ -280,7 +280,7 @@ Releases are end-to-end automated by
 [`.github/workflows/release.yml`](.github/workflows/release.yml): a
 signed annotated tag push triggers a workflow that packages the
 extension, publishes to the
-[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=abeltrano.markdown-pr-review)
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=abeltrano.md-pr-review)
 via federated Microsoft Entra ID (no PAT), and creates a matching
 GitHub Release with the `.vsix` attached.
 
