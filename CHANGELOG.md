@@ -12,11 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [git-cliff]: https://git-cliff.org
 
 
+## [0.4.25] - 2026-06-09
+
+### 🐛 Bug Fixes
+
+- *(badges)* Swap retired shields.io marketplace badges for vsmarketplacebadges.dev
+
 ## [0.4.24] - 2026-06-09
 
 ### 🐛 Bug Fixes
 
-- *(icon)* Refresh marketplace tile with sleek black background
+- *(icon)* Refresh marketplace tile with sleek black background ([#39](https://github.com/abeltrano/markdown-pr-review/pull/39))
 
 ### 🧹 Chores
 
