@@ -183,7 +183,7 @@ jobs:
           echo "-----------------------------"
 
       - name: Upload release bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-bundle
           path: |
@@ -211,7 +211,7 @@ jobs:
       # access here means even a vsce or runner compromise can't
       # exfiltrate repo source or commit on our behalf.
       - name: Download release bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-bundle
 
@@ -224,7 +224,7 @@ jobs:
         run: npm install --global @vscode/vsce@^3.9.2
 
       - name: Azure login (federated, no subscription)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
