@@ -1,4 +1,4 @@
-# Contributing to Markdown PR Review
+# Contributing to Azure DevOps Markdown PR Review
 
 Thanks for your interest! This guide covers how to build, test, and
 submit changes to the extension.

@@ -1,4 +1,4 @@
-# Markdown PR Review
+# Azure DevOps Markdown PR Review
 
 [![CI](https://github.com/abeltrano/markdown-pr-review/actions/workflows/ci.yml/badge.svg)](https://github.com/abeltrano/markdown-pr-review/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/abeltrano/markdown-pr-review/branch/main/graph/badge.svg)](https://codecov.io/gh/abeltrano/markdown-pr-review)
