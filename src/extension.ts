@@ -4,6 +4,7 @@
 //   - SessionManager
 //   - CommentInputViewProvider (sidebar)
 //   - RenderedViewEditorProvider (custom editor for mdpr://)
+//   - MdprContentProvider (TextDocumentContentProvider for mdpr://)
 //   - FileTreeProvider (sidebar tree of changed files)
 //   - Command registry (5 commands)
 
@@ -13,12 +14,13 @@ import { VsCodeAuthManager } from './auth-manager';
 import { SessionManager } from './session-manager';
 import { CommentInputViewProvider } from './comment-input-view-provider';
 import { RenderedViewEditorProvider } from './views/custom-editor-provider';
+import { MdprContentProvider } from './views/mdpr-content-provider';
 import { FileTreeProvider } from './views/file-tree-provider';
 import { CommentThreadDecorationProvider } from './views/file-decoration-provider';
 import { registerCommands } from './command-registry';
 import { StatusBarController } from './status-bar';
 import { StalePRWatcher } from './stale-pr-watcher';
-import { parseMdprUri } from './mdpr-uri';
+import { MDPR_SCHEME, parseMdprUri } from './mdpr-uri';
 
 export function activate(context: vscode.ExtensionContext): void {
  const log = getLogger('Extension');
@@ -40,6 +42,17 @@ export function activate(context: vscode.ExtensionContext): void {
    RenderedViewEditorProvider.viewType,
    new RenderedViewEditorProvider(context, sessionManager),
    { supportsMultipleEditorsPerDocument: false, webviewOptions: { retainContextWhenHidden: true } }
+  )
+ );
+
+ // TextDocumentContentProvider for mdpr:// so VS Code can resolve mdpr://
+ // URIs as text documents. Without this, built-in commands that open the
+ // active editor URI (e.g. "Markdown: Toggle Preview") crash with
+ // "Unable to resolve resource mdpr://…" (see issue #54).
+ context.subscriptions.push(
+  vscode.workspace.registerTextDocumentContentProvider(
+   MDPR_SCHEME,
+   new MdprContentProvider(sessionManager)
   )
  );
 
