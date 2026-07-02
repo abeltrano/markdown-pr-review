@@ -29,7 +29,7 @@ describe('rendered-view session restoration', () => {
   });
  });
 
- it('uses a stable key for concurrent restored editors from the same PR', () => {
+ it('generates case-insensitive stable keys for the same PR', () => {
   const upperCaseParts: MdprSessionParts = {
    ...PARTS,
    organization: 'CONTOSO',

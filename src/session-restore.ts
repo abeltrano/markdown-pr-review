@@ -34,9 +34,9 @@ export function sessionMatchesMdprParts(
  session: Pick<Session, 'pr'>,
  parts: MdprSessionParts
 ): boolean {
- const ref = session.pr.ref;
- return ref.organization.toLowerCase() === parts.organization.toLowerCase() &&
-  ref.project === parts.project &&
-  ref.repositoryId.toLowerCase() === parts.repositoryId.toLowerCase() &&
-  ref.pullRequestId === parts.pullRequestId;
+ const { organization, project, repositoryId, pullRequestId } = session.pr.ref;
+ return organization.toLowerCase() === parts.organization.toLowerCase() &&
+  project === parts.project &&
+  repositoryId.toLowerCase() === parts.repositoryId.toLowerCase() &&
+  pullRequestId === parts.pullRequestId;
 }
