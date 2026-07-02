@@ -30,6 +30,7 @@ describe('recent PR cache', () => {
   const result = addRecentPullRequest([oldItem, otherItem], updatedItem);
 
   expect(result.map(item => item.title)).to.deep.equal(['Updated title', 'Other PR']);
+  expect(result[0].openedAt).to.equal('2026-07-02T20:00:00.000Z');
  });
 
  it('keeps only the requested number of recent PRs', () => {
@@ -64,6 +65,30 @@ describe('recent PR cache', () => {
   ]);
 
   expect(result).to.deep.equal([valid]);
+ });
+
+ it('returns an empty recent list for non-array stored state', () => {
+  expect(parseStoredRecentPullRequests(undefined)).to.deep.equal([]);
+  expect(parseStoredRecentPullRequests({ recent: [makeRecent(42)] })).to.deep.equal([]);
+ });
+
+ it('drops entries with incomplete metadata or invalid refs', () => {
+  const valid = makeRecent(42);
+  const invalidEntries: unknown[] = [
+   { ...valid, title: 42 },
+   { ...valid, sourceRefName: null },
+   { ...valid, targetRefName: false },
+   { ...valid, openedAt: 42 },
+   { ...valid, ref: 'not a ref' },
+   { ...valid, ref: { ...valid.ref, organization: 42 } },
+   { ...valid, ref: { ...valid.ref, project: 42 } },
+   { ...valid, ref: { ...valid.ref, repositoryId: 42 } },
+   { ...valid, ref: { ...valid.ref, repositoryName: 42 } },
+   { ...valid, ref: { ...valid.ref, pullRequestId: Number.NaN } },
+   { ...valid, ref: { ...valid.ref, pullRequestId: -1 } }
+  ];
+
+  expect(parseStoredRecentPullRequests([valid, ...invalidEntries])).to.deep.equal([valid]);
  });
 });
 
