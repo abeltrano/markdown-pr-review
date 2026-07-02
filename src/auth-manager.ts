@@ -70,11 +70,22 @@ export class VsCodeAuthManager implements AuthManager {
    throw new AuthAcquisitionError('no-session', 'getSession returned undefined despite createIfNone.');
   } catch (err) {
    const friendly = err instanceof Error ? err.message : String(err);
-   this.log.warn('Microsoft auth getSession failed; offering PAT fallback.', { error: friendly });
    if (silent) {
-    throw err;
+    // A silent acquisition that fails — whether it returned no session
+    // (AuthAcquisitionError above) or the provider threw because it needs
+    // interaction (VS Code reports "Canceled" when account selection or
+    // consent is required but UI is suppressed) — means we cannot get a
+    // token without a prompt. Normalize to a silent-acquisition failure so
+    // the caller (ado-client.ts) performs the interactive retry, instead of
+    // surfacing a raw cancellation as an unexpected error (RISK-003).
+    if (err instanceof AuthAcquisitionError) {
+     throw err;
+    }
+    this.log.info('Silent Microsoft auth requires interaction; retrying interactively.', { error: friendly });
+    throw new AuthAcquisitionError('silent', `Silent acquisition failed: ${friendly}`);
    }
    // Non-silent failure: offer PAT fallback per RISK-003.
+   this.log.warn('Microsoft auth getSession failed; offering PAT fallback.', { error: friendly });
    const choice = await vscode.window.showWarningMessage(
     `Azure DevOps sign-in via the Microsoft account provider failed: ${friendly}. Use a Personal Access Token instead?`,
     'Enter PAT',
