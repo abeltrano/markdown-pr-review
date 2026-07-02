@@ -33,6 +33,7 @@ describe('rendered-view session restoration', () => {
   const upperCaseParts: MdprSessionParts = {
    ...PARTS,
    organization: 'CONTOSO',
+   project: 'MY PROJECT',
    repositoryId: '01234567-89AB-CDEF-0123-456789ABCDEF'
   };
 

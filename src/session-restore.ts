@@ -14,7 +14,7 @@ export interface MdprSessionParts {
 export function sessionKeyFromMdprParts(parts: MdprSessionParts): string {
  return JSON.stringify([
   parts.organization.toLowerCase(),
-  parts.project,
+  parts.project.toLowerCase(),
   parts.repositoryId.toLowerCase(),
   String(parts.pullRequestId)
  ]);
@@ -36,7 +36,7 @@ export function sessionMatchesMdprParts(
 ): boolean {
  const { organization, project, repositoryId, pullRequestId } = session.pr.ref;
  return organization.toLowerCase() === parts.organization.toLowerCase() &&
-  project === parts.project &&
+  project.toLowerCase() === parts.project.toLowerCase() &&
   repositoryId.toLowerCase() === parts.repositoryId.toLowerCase() &&
   pullRequestId === parts.pullRequestId;
 }
