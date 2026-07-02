@@ -39,6 +39,12 @@ describe('rendered-view session restoration', () => {
   expect(sessionKeyFromMdprParts(upperCaseParts)).to.equal(
    sessionKeyFromMdprParts(PARTS)
   );
+  expect(sessionKeyFromMdprParts({ ...PARTS, project: 'Other Project' })).to.not.equal(
+   sessionKeyFromMdprParts(PARTS)
+  );
+  expect(sessionKeyFromMdprParts({ ...PARTS, pullRequestId: 62 })).to.not.equal(
+   sessionKeyFromMdprParts(PARTS)
+  );
  });
 
  it('recognizes when the active session already matches the restored editor', () => {
