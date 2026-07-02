@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import { getLogger } from './logger';
 import { parsePullRequestInput } from './pr-url-parser';
+import { isPullRequestRef } from './recent-prs';
 import type { SessionManager } from './session-manager';
 import type { AdoSettings, PullRequestRef } from './types';
 import type { CommentInputViewProvider } from './comment-input-view-provider';
@@ -26,9 +27,14 @@ export function registerCommands(
  const log = getLogger('CommandRegistry');
 
  context.subscriptions.push(
-  vscode.commands.registerCommand(COMMAND_IDS.openPR, async (ref?: PullRequestRef) => {
+  vscode.commands.registerCommand(COMMAND_IDS.openPR, async (ref?: unknown) => {
    try {
-    const targetRef = ref ?? await promptForPullRequestRef(log);
+    // VS Code invokes a view/title command with the currently selected
+    // tree node as its first argument. When no PR is active the file
+    // tree shows a placeholder node (kind:'message'), so `ref` can be an
+    // arbitrary object rather than a PullRequestRef — accept it only when
+    // it is a genuine ref, otherwise fall back to the input prompt.
+    const targetRef = isPullRequestRef(ref) ? ref : await promptForPullRequestRef(log);
     if (!targetRef) return;
     await sessionManager.openPullRequest(targetRef);
     void vscode.window.showInformationMessage(

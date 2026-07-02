@@ -3,6 +3,7 @@
 import { expect } from 'chai';
 import {
  addRecentPullRequest,
+ isPullRequestRef,
  MAX_RECENT_PULL_REQUESTS,
  parseStoredRecentPullRequests,
  RECENT_PULL_REQUESTS_STATE_KEY,
@@ -10,7 +11,7 @@ import {
  recentPullRequestKey,
  type RecentPullRequest
 } from '../../src/recent-prs';
-import type { PullRequest } from '../../src/types';
+import type { PullRequest, PullRequestRef } from '../../src/types';
 
 describe('recent PR cache', () => {
  it('defines the persisted-state key and default cache limit', () => {
@@ -129,6 +130,48 @@ describe('recent PR cache', () => {
   ];
 
   expect(parseStoredRecentPullRequests([valid, ...invalidEntries])).to.deep.equal([valid]);
+ });
+});
+
+describe('isPullRequestRef guard', () => {
+ const validRef: PullRequestRef = {
+  organization: 'contoso',
+  project: 'Project',
+  repositoryId: 'abcdefab-1234-1234-1234-abcdefabcdef',
+  repositoryName: 'Docs',
+  pullRequestId: 42
+ };
+
+ it('accepts a complete pull request ref', () => {
+  expect(isPullRequestRef(validRef)).to.equal(true);
+ });
+
+ it('rejects the file-tree placeholder node passed by the view/title button', () => {
+  const placeholder = {
+   kind: 'message',
+   label: 'No active PR. Run "Markdown PR Review: Open Pull Request…" to start.',
+   tooltip: 'Press Ctrl+Shift+P and run the command.'
+  };
+
+  expect(isPullRequestRef(placeholder)).to.equal(false);
+ });
+
+ it('rejects nullish and non-object values', () => {
+  expect(isPullRequestRef(undefined)).to.equal(false);
+  expect(isPullRequestRef(null)).to.equal(false);
+  expect(isPullRequestRef('ref')).to.equal(false);
+ });
+
+ it('rejects partial or malformed refs', () => {
+  expect(isPullRequestRef({ ...validRef, organization: 42 })).to.equal(false);
+  expect(isPullRequestRef({ ...validRef, repositoryId: 42 })).to.equal(false);
+  expect(isPullRequestRef({ ...validRef, pullRequestId: 0 })).to.equal(false);
+  expect(isPullRequestRef({
+   organization: 'contoso',
+   project: 'Project',
+   repositoryId: 'abcdefab-1234-1234-1234-abcdefabcdef',
+   repositoryName: 'Docs'
+  })).to.equal(false);
  });
 });
 

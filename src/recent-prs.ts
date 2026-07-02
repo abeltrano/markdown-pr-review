@@ -66,7 +66,7 @@ function isRecentPullRequest(value: unknown): value is RecentPullRequest {
  return isPullRequestRef(value.ref);
 }
 
-function isPullRequestRef(value: unknown): value is PullRequestRef {
+export function isPullRequestRef(value: unknown): value is PullRequestRef {
  if (!isRecord(value)) return false;
  return typeof value.organization === 'string' &&
   typeof value.project === 'string' &&
