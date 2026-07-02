@@ -12,11 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [git-cliff]: https://git-cliff.org
 
 
+## [0.4.26] - 2026-07-02
+
+### 🐛 Bug Fixes
+
+- Register TextDocumentContentProvider for mdpr:// to prevent Markdown Preview crash ([#55](https://github.com/abeltrano/markdown-pr-review/pull/55))
+
 ## [0.4.25] - 2026-06-09
 
 ### 🐛 Bug Fixes
 
-- *(badges)* Swap retired shields.io marketplace badges for vsmarketplacebadges.dev
+- *(badges)* Swap retired shields.io marketplace badges for vsmarketplacebadges.dev ([#40](https://github.com/abeltrano/markdown-pr-review/pull/40))
 
 ## [0.4.24] - 2026-06-09
 
