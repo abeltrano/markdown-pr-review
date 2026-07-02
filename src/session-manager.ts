@@ -18,8 +18,7 @@ import { annotateBlockDiff } from './renderer/diff-annotator';
 import { parseMdprUri } from './mdpr-uri';
 import {
  pullRequestRefFromMdprParts,
- sessionKeyFromMdprParts,
- sessionMatchesMdprParts
+ sessionKeyFromMdprParts
 } from './session-restore';
 import {
  RECENT_PULL_REQUESTS_STATE_KEY,
@@ -48,12 +47,20 @@ export class SessionManager {
  private readonly _onThreadsChanged = new vscode.EventEmitter<void>();
  readonly onThreadsChanged = this._onThreadsChanged.event;
 
- private activeSession: Session | null = null;
+ // Open PR sessions keyed by session key (org/project/repoId/prId). Multiple
+ // PRs can be open at once; each mdpr:// rendered editor resolves against its
+ // own session by URI, independent of which PR is currently "active".
+ private readonly sessions = new Map<string, Session>();
+ private readonly commentControllers = new Map<string, CommentController>();
+ private activeSessionKey: string | null = null;
+ // Session key of the PR whose selection currently populates the shared
+ // comment-input sidebar, so Post/Cancel route to the right PR regardless
+ // of which session is active.
+ private activeDraftKey: string | null = null;
  private adoClient: AdoClient;
- private commentController: CommentController | null = null;
  private inputView: CommentInputViewProvider | null = null;
  private disposables: vscode.Disposable[] = [];
- private pendingSessionRestore: { key: string; promise: Promise<void> } | null = null;
+ private readonly pendingSessionRestores = new Map<string, Promise<void>>();
  // Per-webview ready signal: resolves when the webview's script has
  // attached its `message` listener and posted `ready`. We MUST wait on
  // this before postMessage(init), otherwise the very first message is
@@ -90,7 +97,7 @@ export class SessionManager {
  }
 
  getActiveSession(): Session | null {
-  return this.activeSession;
+  return this.activeSessionKey ? this.sessions.get(this.activeSessionKey) ?? null : null;
  }
 
  /** Internal accessor — used by infrastructure that needs to make REST calls. */
@@ -98,13 +105,40 @@ export class SessionManager {
   return this.adoClient;
  }
 
+ /** Session for an mdpr:// URI (by PR identity), or null if not open. */
+ getSessionForUri(uriStr: string): Session | null {
+  const key = this.keyForUri(uriStr);
+  return key ? this.sessions.get(key) ?? null : null;
+ }
+
+ private keyForRef(ref: PullRequestRef): string {
+  return sessionKeyFromMdprParts({
+   organization: ref.organization,
+   project: ref.project,
+   repositoryId: ref.repositoryId,
+   pullRequestId: ref.pullRequestId
+  });
+ }
+
+ private keyForUri(uriStr: string): string | null {
+  try {
+   return sessionKeyFromMdprParts(parseMdprUri(uriStr));
+  } catch {
+   return null;
+  }
+ }
+
  async openPullRequest(ref: PullRequestRef): Promise<void> {
   this.log.info('Opening PR', { ref });
-  // Tear down any prior session.
-  await this.disposeSession();
   // Resolve repo GUID if needed.
   const repoId = await this.adoClient.resolveRepositoryId(ref);
   const fullRef: PullRequestRef = { ...ref, repositoryId: repoId };
+  const key = this.keyForRef(fullRef);
+  // Re-opening a PR that is already open reloads it (e.g. refresh-to-head):
+  // dispose just that one session, leaving any other open PRs intact.
+  if (this.sessions.has(key)) {
+   await this.disposeSession(key);
+  }
 
   const pr = await this.adoClient.getPullRequest(fullRef);
   const headSha = pr.lastMergeSourceCommit.commitId;
@@ -124,24 +158,26 @@ export class SessionManager {
    activeDraft: null,
    dispose: () => { /* per-session resources cleared in disposeSession() */ }
   };
-  this.activeSession = session;
+  this.sessions.set(key, session);
 
-  // Wire the comment controller for this session.
-  this.commentController = new CommentController({
+  // Wire a comment controller bound to THIS session's PR ref and a
+  // session-scoped file-content resolver, so comments and content fetches
+  // always target the right PR regardless of which session is active.
+  this.commentControllers.set(key, new CommentController({
    pullRequestRef: fullRef,
    adoClient: this.adoClient,
    inputView: this.inputView!,
-   fileContentResolver: (filePath) => this.getFileContent(filePath),
-   onThreadPosted: (thread) => this.recordPostedThread(thread)
-  });
+   fileContentResolver: (filePath) => this.getFileContentForSession(session, filePath),
+   onThreadPosted: (thread) => this.recordPostedThread(session, thread)
+  }));
 
+  this.activeSessionKey = key;
   await this.recordRecentPullRequest(pr);
   this._onSessionChanged.fire(session);
   this.log.info(`PR loaded — ${pr.title} (${files.length} files, ${threads.length} threads)`);
  }
 
- async getFileContent(filePath: string): Promise<string> {
-  const session = this.requireSession();
+ async getFileContentForSession(session: Session, filePath: string): Promise<string> {
   const cached = session.fileContentCache.get(filePath);
   if (cached !== undefined) return cached;
   const ref = session.pr.ref;
@@ -163,7 +199,10 @@ export class SessionManager {
    await surfaceError(err, `Restore ${parsed.filePath}`);
    throw err;
   }
-  const session = this.requireSession();
+  const session = this.getSessionForUri(uri.toString());
+  if (!session) {
+   throw new Error('No session for rendered view after restore.');
+  }
   const filePath = parsed.filePath;
   const uriKey = uri.toString();
   session.openedEditors.set(uriKey, panel);
@@ -230,7 +269,7 @@ export class SessionManager {
 
   // Kick off head + base fetches in parallel so the base fetch can
   // overlap network latency with the head fetch + initial render.
-  const headPromise = this.getFileContent(filePath);
+  const headPromise = this.getFileContentForSession(session, filePath);
   const basePromise: Promise<string | null> = session.baseSha
    ? this.adoClient
     .getFileContentOrNullByRef(session.pr.ref, session.baseSha, filePath)
@@ -384,14 +423,20 @@ export class SessionManager {
  private async ensureSessionForRenderedView(
   parsed: ReturnType<typeof parseMdprUri>
  ): Promise<void> {
-  const session = this.activeSession;
-  if (session && sessionMatchesMdprParts(session, parsed)) {
+  const key = sessionKeyFromMdprParts(parsed);
+  if (this.sessions.has(key)) {
+   // Already open — mark it active so active-session consumers (tree,
+   // status bar, stale watcher) follow the rendered editor the user just
+   // focused. Fire the change event so they actually re-read the session.
+   if (this.activeSessionKey !== key) {
+    this.activeSessionKey = key;
+    this._onSessionChanged.fire(this.getActiveSession());
+   }
    return;
   }
-
-  const key = sessionKeyFromMdprParts(parsed);
-  if (this.pendingSessionRestore?.key === key) {
-   await this.pendingSessionRestore.promise;
+  const pending = this.pendingSessionRestores.get(key);
+  if (pending) {
+   await pending;
    return;
   }
 
@@ -402,13 +447,11 @@ export class SessionManager {
    pullRequestId: parsed.pullRequestId
   });
   const promise = this.openPullRequest(pullRequestRefFromMdprParts(parsed));
-  this.pendingSessionRestore = { key, promise };
+  this.pendingSessionRestores.set(key, promise);
   try {
    await promise;
   } finally {
-   if (this.pendingSessionRestore?.promise === promise) {
-    this.pendingSessionRestore = null;
-   }
+   this.pendingSessionRestores.delete(key);
   }
  }
 
@@ -418,17 +461,23 @@ export class SessionManager {
     this.log.info('Webview ready signal received.', { uri: uriStr });
     this.webviewReady.get(uriStr)?.resolve();
     break;
-   case 'selectionMade':
-    if (!this.commentController) return;
-    await this.commentController.handleSelection(msg.payload, uriStr);
+   case 'selectionMade': {
+    const key = this.keyForUri(uriStr);
+    const controller = key ? this.commentControllers.get(key) : undefined;
+    if (!controller) return;
+    this.activeDraftKey = key;
+    await controller.handleSelection(msg.payload, uriStr);
     break;
-   case 'refreshThreads':
-    await this.refreshThreads();
+   }
+   case 'refreshThreads': {
+    const session = this.getSessionForUri(uriStr);
+    if (session) await this.refreshThreadsForSession(session);
     break;
+   }
    case 'refreshToHead':
     this.log.info('Refresh-to-head requested.');
     try {
-     const session = this.activeSession;
+     const session = this.getSessionForUri(uriStr);
      if (session) {
       await this.openPullRequest(session.pr.ref);
      }
@@ -443,11 +492,14 @@ export class SessionManager {
  }
 
  async refreshThreads(): Promise<void> {
-  const session = this.requireSession();
+  await this.refreshThreadsForSession(this.requireSession());
+ }
+
+ private async refreshThreadsForSession(session: Session): Promise<void> {
   const threads = await this.adoClient.getThreads(session.pr.ref);
   session.threads = threads;
   this._onThreadsChanged.fire();
-  // Push to every open rendered view.
+  // Push to every open rendered view for this session.
   for (const [_uri, panel] of session.openedEditors) {
    void panel.webview.postMessage({
     type: 'threadsRefreshed',
@@ -457,17 +509,34 @@ export class SessionManager {
  }
 
  async handlePostThread(req: PostThreadRequest): Promise<void> {
-  if (!this.commentController) return;
-  await this.commentController.handlePostThread(req);
+  const controller = this.activeDraftController();
+  if (!controller) return;
+  // Only release the draft's routing key once the post actually succeeds.
+  // CommentController swallows recoverable post errors and keeps the draft,
+  // so a retry must still route to the PR whose selection created it rather
+  // than falling back to whichever session happens to be active.
+  const posted = await controller.handlePostThread(req);
+  if (posted) this.activeDraftKey = null;
  }
 
  handleCancelDraft(): void {
-  if (!this.commentController) return;
-  this.commentController.handleCancelDraft();
+  const controller = this.activeDraftController();
+  if (!controller) return;
+  controller.handleCancelDraft();
+  this.activeDraftKey = null;
  }
 
- private recordPostedThread(thread: Thread): void {
-  const session = this.requireSession();
+ private activeDraftController(): CommentController | null {
+  if (this.activeDraftKey) {
+   const owned = this.commentControllers.get(this.activeDraftKey);
+   if (owned) return owned;
+  }
+  return this.activeSessionKey
+   ? this.commentControllers.get(this.activeSessionKey) ?? null
+   : null;
+ }
+
+ private recordPostedThread(session: Session, thread: Thread): void {
   session.threads.push(thread);
   this._onThreadsChanged.fire();
   // Push to the originating panel (and any others showing the same file).
@@ -484,10 +553,17 @@ export class SessionManager {
  }
 
  private requireSession(): Session {
-  if (!this.activeSession) {
+  const session = this.getActiveSession();
+  if (!session) {
    throw new Error('No active session. Open a pull request first.');
   }
-  return this.activeSession;
+  return session;
+ }
+
+ private *allOpenPanels(): Iterable<[string, vscode.WebviewPanel]> {
+  for (const session of this.sessions.values()) {
+   yield* session.openedEditors;
+  }
  }
 
  private async recordRecentPullRequest(
@@ -618,11 +694,9 @@ export class SessionManager {
   * message so the page can swap CSS without a full reload.
   */
  private restyleAllOpenPanels(): void {
-  const session = this.activeSession;
-  if (!session) return;
   const previewStyle = readMarkdownPreviewStyle();
   const distRoot = vscode.Uri.joinPath(this.context.extensionUri, 'out');
-  for (const [uriKey, panel] of session.openedEditors) {
+  for (const [uriKey, panel] of this.allOpenPanels()) {
    try {
     const userStyles = this.resolveUserStyles(panel.webview);
     const builtinStyles = this.resolveBuiltinMarkdownStyles(panel.webview);
@@ -654,18 +728,34 @@ export class SessionManager {
   }
  }
 
- async disposeSession(): Promise<void> {
-  if (!this.activeSession) return;
-  for (const panel of this.activeSession.openedEditors.values()) {
+ async disposeSession(key?: string): Promise<void> {
+  const targetKey = key ?? this.activeSessionKey;
+  if (!targetKey) return;
+  const session = this.sessions.get(targetKey);
+  if (!session) return;
+  for (const panel of session.openedEditors.values()) {
    try { panel.dispose(); } catch { /* ignore */ }
   }
-  this.activeSession = null;
-  this.commentController = null;
-  this._onSessionChanged.fire(null);
+  this.sessions.delete(targetKey);
+  this.commentControllers.delete(targetKey);
+  this.pendingSessionRestores.delete(targetKey);
+  if (this.activeDraftKey === targetKey) this.activeDraftKey = null;
+  if (this.activeSessionKey === targetKey) {
+   // Promote the most-recently-opened remaining session, if any.
+   const remaining = [...this.sessions.keys()];
+   this.activeSessionKey = remaining.length ? remaining[remaining.length - 1]! : null;
+  }
+  this._onSessionChanged.fire(this.getActiveSession());
+ }
+
+ async disposeAll(): Promise<void> {
+  for (const key of [...this.sessions.keys()]) {
+   await this.disposeSession(key);
+  }
  }
 
  dispose(): void {
-  void this.disposeSession();
+  void this.disposeAll();
   this._onSessionChanged.dispose();
   this._onThreadsChanged.dispose();
   for (const d of this.disposables) {
