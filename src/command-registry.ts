@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { getLogger } from './logger';
 import { parsePullRequestInput } from './pr-url-parser';
 import type { SessionManager } from './session-manager';
-import type { AdoSettings } from './types';
+import type { AdoSettings, PullRequestRef } from './types';
 import type { CommentInputViewProvider } from './comment-input-view-provider';
 import { ERROR_CODES, surfaceError } from './error-utils';
 
@@ -26,33 +26,13 @@ export function registerCommands(
  const log = getLogger('CommandRegistry');
 
  context.subscriptions.push(
-  vscode.commands.registerCommand(COMMAND_IDS.openPR, async () => {
+  vscode.commands.registerCommand(COMMAND_IDS.openPR, async (ref?: PullRequestRef) => {
    try {
-    const settings = getSettings();
-    let initialValue: string | undefined;
-    if (settings.defaultOrganization && settings.defaultProject) {
-     initialValue = '';
-    }
-    const input = await vscode.window.showInputBox({
-     prompt: 'Enter the ADO PR URL or pull request ID',
-     placeHolder: 'https://dev.azure.com/{org}/{project}/_git/{repo}/pullrequest/{id}',
-     value: initialValue,
-     ignoreFocusOut: true
-    });
-    if (!input) return;
-    const parsed = parsePullRequestInput(input, settings);
-    if (!parsed.ok) {
-     void vscode.window.showErrorMessage(
-      `Open PR failed (${ERROR_CODES.PR_PARSE}/${parsed.error.code}): ${parsed.error.message}`,
-      'Open Output'
-     ).then((choice) => {
-      if (choice === 'Open Output') log.channel.show(true);
-     });
-     return;
-    }
-    await sessionManager.openPullRequest(parsed.value);
+    const targetRef = ref ?? await promptForPullRequestRef(log);
+    if (!targetRef) return;
+    await sessionManager.openPullRequest(targetRef);
     void vscode.window.showInformationMessage(
-     `Loaded PR #${parsed.value.pullRequestId} from ${parsed.value.organization}/${parsed.value.project}.`
+     `Loaded PR #${targetRef.pullRequestId} from ${targetRef.organization}/${targetRef.project}.`
     );
    } catch (err) {
     await surfaceError(err, 'Open PR');
@@ -98,6 +78,34 @@ export function registerCommands(
    void vscode.window.showInformationMessage('PR session closed.');
   })
  );
+}
+
+async function promptForPullRequestRef(
+ log: ReturnType<typeof getLogger>
+): Promise<PullRequestRef | null> {
+ const settings = getSettings();
+ let initialValue: string | undefined;
+ if (settings.defaultOrganization && settings.defaultProject) {
+  initialValue = '';
+ }
+ const input = await vscode.window.showInputBox({
+  prompt: 'Enter the ADO PR URL or pull request ID',
+  placeHolder: 'https://dev.azure.com/{org}/{project}/_git/{repo}/pullrequest/{id}',
+  value: initialValue,
+  ignoreFocusOut: true
+ });
+ if (!input) return null;
+ const parsed = parsePullRequestInput(input, settings);
+ if (!parsed.ok) {
+  void vscode.window.showErrorMessage(
+   `Open PR failed (${ERROR_CODES.PR_PARSE}/${parsed.error.code}): ${parsed.error.message}`,
+   'Open Output'
+  ).then((choice) => {
+   if (choice === 'Open Output') log.channel.show(true);
+  });
+  return null;
+ }
+ return parsed.value;
 }
 
 function getSettings(): AdoSettings {

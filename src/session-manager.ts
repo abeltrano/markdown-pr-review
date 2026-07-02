@@ -21,6 +21,12 @@ import {
  sessionKeyFromMdprParts,
  sessionMatchesMdprParts
 } from './session-restore';
+import {
+ RECENT_PULL_REQUESTS_STATE_KEY,
+ addRecentPullRequest,
+ parseStoredRecentPullRequests,
+ recentPullRequestFromPullRequest
+} from './recent-prs';
 import { buildRenderedViewCsp, generateNonce } from './views/csp';
 import { surfaceError, toErrorPayload } from './error-utils';
 import type { AuthManager } from './auth-manager';
@@ -128,6 +134,7 @@ export class SessionManager {
    onThreadPosted: (thread) => this.recordPostedThread(thread)
   });
 
+  await this.recordRecentPullRequest(pr);
   this._onSessionChanged.fire(session);
   this.log.info(`PR loaded — ${pr.title} (${files.length} files, ${threads.length} threads)`);
  }
@@ -480,6 +487,21 @@ export class SessionManager {
    throw new Error('No active session. Open a pull request first.');
   }
   return this.activeSession;
+ }
+
+ private async recordRecentPullRequest(pr: Session['pr']): Promise<void> {
+  try {
+   const existing = parseStoredRecentPullRequests(
+    this.context.globalState.get<unknown>(RECENT_PULL_REQUESTS_STATE_KEY)
+   );
+   const next = addRecentPullRequest(existing, recentPullRequestFromPullRequest(pr));
+   await this.context.globalState.update(RECENT_PULL_REQUESTS_STATE_KEY, next);
+  } catch (err) {
+   this.log.warn('Failed to persist recent pull request.', {
+    pullRequestId: pr.ref.pullRequestId,
+    error: err instanceof Error ? err.message : String(err)
+   });
+  }
  }
 
  /**

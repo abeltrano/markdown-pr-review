@@ -39,6 +39,7 @@
   "activationEvents": [
     "onCommand:markdownPrReview.openPullRequest",
     "onView:markdownPrReview.fileTree",
+    "onView:markdownPrReview.recentPullRequests",
     "onView:markdownPrReview.commentInput",
     "onCustomEditor:markdownPrReview.renderedView"
   ],
@@ -107,6 +108,11 @@
           "id": "markdownPrReview.fileTree",
           "name": "Changed Files",
           "icon": "$(files)"
+        },
+        {
+          "id": "markdownPrReview.recentPullRequests",
+          "name": "Recent Pull Requests",
+          "icon": "$(history)"
         },
         {
           "id": "markdownPrReview.commentInput",
