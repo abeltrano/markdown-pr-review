@@ -12,12 +12,12 @@ export interface MdprSessionParts {
 }
 
 export function sessionKeyFromMdprParts(parts: MdprSessionParts): string {
- return [
+ return JSON.stringify([
   parts.organization.toLowerCase(),
   parts.project,
   parts.repositoryId.toLowerCase(),
   String(parts.pullRequestId)
- ].join('\n');
+ ]);
 }
 
 export function pullRequestRefFromMdprParts(parts: MdprSessionParts): PullRequestRef {

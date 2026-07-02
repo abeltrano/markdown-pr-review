@@ -145,7 +145,16 @@ export class SessionManager {
 
  async attachRenderedView(uri: vscode.Uri, panel: vscode.WebviewPanel): Promise<void> {
   const parsed = parseMdprUri(uri.toString());
-  await this.ensureSessionForRenderedView(parsed);
+  try {
+   await this.ensureSessionForRenderedView(parsed);
+  } catch (err) {
+   this.log.error('Failed to restore session for rendered view.', {
+    filePath: parsed.filePath,
+    error: err instanceof Error ? err.message : String(err)
+   });
+   await surfaceError(err, `Restore ${parsed.filePath}`);
+   throw err;
+  }
   const session = this.requireSession();
   const filePath = parsed.filePath;
   const uriKey = uri.toString();
