@@ -16,6 +16,11 @@ import { getLogger } from './logger';
 import { render as renderMarkdown } from './renderer';
 import { annotateBlockDiff } from './renderer/diff-annotator';
 import { parseMdprUri } from './mdpr-uri';
+import {
+ pullRequestRefFromMdprParts,
+ sessionKeyFromMdprParts,
+ sessionMatchesMdprParts
+} from './session-restore';
 import { buildRenderedViewCsp, generateNonce } from './views/csp';
 import { surfaceError, toErrorPayload } from './error-utils';
 import type { AuthManager } from './auth-manager';
@@ -41,6 +46,7 @@ export class SessionManager {
  private commentController: CommentController | null = null;
  private inputView: CommentInputViewProvider | null = null;
  private disposables: vscode.Disposable[] = [];
+ private pendingSessionRestore: { key: string; promise: Promise<void> } | null = null;
  // Per-webview ready signal: resolves when the webview's script has
  // attached its `message` listener and posted `ready`. We MUST wait on
  // this before postMessage(init), otherwise the very first message is
@@ -138,8 +144,9 @@ export class SessionManager {
  }
 
  async attachRenderedView(uri: vscode.Uri, panel: vscode.WebviewPanel): Promise<void> {
-  const session = this.requireSession();
   const parsed = parseMdprUri(uri.toString());
+  await this.ensureSessionForRenderedView(parsed);
+  const session = this.requireSession();
   const filePath = parsed.filePath;
   const uriKey = uri.toString();
   session.openedEditors.set(uriKey, panel);
@@ -354,6 +361,37 @@ export class SessionManager {
     payload
    } satisfies HostToRenderedView);
    void surfaceError(err, `Open ${filePath}`);
+  }
+ }
+
+ private async ensureSessionForRenderedView(
+  parsed: ReturnType<typeof parseMdprUri>
+ ): Promise<void> {
+  const session = this.activeSession;
+  if (session && sessionMatchesMdprParts(session, parsed)) {
+   return;
+  }
+
+  const key = sessionKeyFromMdprParts(parsed);
+  if (this.pendingSessionRestore?.key === key) {
+   await this.pendingSessionRestore.promise;
+   return;
+  }
+
+  this.log.info('Restoring session for rendered view.', {
+   organization: parsed.organization,
+   project: parsed.project,
+   repositoryId: parsed.repositoryId,
+   pullRequestId: parsed.pullRequestId
+  });
+  const promise = this.openPullRequest(pullRequestRefFromMdprParts(parsed));
+  this.pendingSessionRestore = { key, promise };
+  try {
+   await promise;
+  } finally {
+   if (this.pendingSessionRestore?.promise === promise) {
+    this.pendingSessionRestore = null;
+   }
   }
  }
 
