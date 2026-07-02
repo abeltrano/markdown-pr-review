@@ -39,6 +39,15 @@ updates:
         patterns:
           - "@types/vscode"
           - "@vscode/*"
+      # Catch-all so any remaining minor or patch bump not matched by a
+      # named group above lands in a single PR. Majors stay individual
+      # so breaking upgrades get isolated review.
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
@@ -51,3 +60,9 @@ updates:
     labels:
       - dependencies
       - github-actions
+    groups:
+      # Fold all GitHub Actions bumps into one PR; action major bumps
+      # are low-risk and easy to revert, so grouping them is safe.
+      actions:
+        patterns:
+          - "*"
