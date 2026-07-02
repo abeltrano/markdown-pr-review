@@ -16,7 +16,7 @@ export interface RecentPullRequest {
 
 export function recentPullRequestFromPullRequest(
  pr: PullRequest,
- openedAt = new Date().toISOString()
+ openedAt: string
 ): RecentPullRequest {
  return {
   ref: pr.ref,

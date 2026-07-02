@@ -33,6 +33,7 @@ import type { AuthManager } from './auth-manager';
 import type {
  HostToRenderedView,
  PostThreadRequest,
+ PullRequest,
  PullRequestRef,
  RenderedViewInitPayload,
  RenderedViewToHost,
@@ -489,12 +490,15 @@ export class SessionManager {
   return this.activeSession;
  }
 
- private async recordRecentPullRequest(pr: Session['pr']): Promise<void> {
+ private async recordRecentPullRequest(
+  pr: PullRequest,
+  openedAt = new Date().toISOString()
+ ): Promise<void> {
   try {
    const existing = parseStoredRecentPullRequests(
     this.context.globalState.get<unknown>(RECENT_PULL_REQUESTS_STATE_KEY)
    );
-   const next = addRecentPullRequest(existing, recentPullRequestFromPullRequest(pr));
+   const next = addRecentPullRequest(existing, recentPullRequestFromPullRequest(pr, openedAt));
    await this.context.globalState.update(RECENT_PULL_REQUESTS_STATE_KEY, next);
   } catch (err) {
    this.log.warn('Failed to persist recent pull request.', {
