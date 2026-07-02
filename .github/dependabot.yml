@@ -48,6 +48,12 @@ updates:
         update-types:
           - minor
           - patch
+      # Fold all npm security-update PRs (Dependabot alerts) into one PR
+      # so vulnerability fixes land together instead of one-per-advisory.
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
 
   - package-ecosystem: github-actions
     directory: /
