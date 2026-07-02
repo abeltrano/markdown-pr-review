@@ -92,9 +92,18 @@ export class HttpAdoClient implements AdoClient {
    targetRefName: string;
    lastMergeSourceCommit?: { commitId: string };
    status: string;
+   repository?: { id?: string; name?: string };
   }>('GET', url);
   return {
-   ref: { ...ref, repositoryId: repoId },
+   ref: {
+    ...ref,
+    repositoryId: repoId,
+    // The PR response carries the authoritative repository name; prefer it
+    // so a ref restored from an mdpr:// URI (which encodes only the repo
+    // GUID, not the name) still records a human-readable name for the
+    // Recent Pull Requests list instead of falling back to the GUID.
+    repositoryName: raw.repository?.name || ref.repositoryName
+   },
    title: raw.title,
    sourceRefName: raw.sourceRefName,
    targetRefName: raw.targetRefName,

@@ -27,6 +27,15 @@ export function recentPullRequestFromPullRequest(
  };
 }
 
+// Description shown next to a recent PR in the tree. Prefer the repository
+// name; when it is missing (e.g. a legacy entry recorded from an mdpr://
+// restore that lacked the name) fall back to the title alone rather than
+// surfacing the repository GUID, which is meaningless to the user.
+export function recentPullRequestDescription(item: RecentPullRequest): string {
+ const repositoryName = item.ref.repositoryName.trim();
+ return repositoryName ? `${repositoryName} — ${item.title}` : item.title;
+}
+
 export function addRecentPullRequest(
  existing: RecentPullRequest[],
  next: RecentPullRequest,

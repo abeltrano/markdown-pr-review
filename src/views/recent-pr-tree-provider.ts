@@ -8,6 +8,7 @@ import {
  MAX_RECENT_PULL_REQUESTS,
  RECENT_PULL_REQUESTS_STATE_KEY,
  parseStoredRecentPullRequests,
+ recentPullRequestDescription,
  recentPullRequestKey,
  type RecentPullRequest
 } from '../recent-prs';
@@ -47,7 +48,7 @@ export class RecentPullRequestTreeProvider
    vscode.TreeItemCollapsibleState.None
   );
   item.iconPath = new vscode.ThemeIcon('git-pull-request');
-  item.description = `${ref.repositoryName || ref.repositoryId} — ${pr.title}`;
+  item.description = recentPullRequestDescription(pr);
   item.tooltip = [
    pr.title,
    `${ref.organization}/${ref.project}/${ref.repositoryName || ref.repositoryId}`,

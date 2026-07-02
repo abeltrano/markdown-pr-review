@@ -7,6 +7,7 @@ import {
  MAX_RECENT_PULL_REQUESTS,
  parseStoredRecentPullRequests,
  RECENT_PULL_REQUESTS_STATE_KEY,
+ recentPullRequestDescription,
  recentPullRequestFromPullRequest,
  recentPullRequestKey,
  type RecentPullRequest
@@ -172,6 +173,34 @@ describe('isPullRequestRef guard', () => {
    repositoryId: 'abcdefab-1234-1234-1234-abcdefabcdef',
    repositoryName: 'Docs'
   })).to.equal(false);
+ });
+});
+
+describe('recentPullRequestDescription', () => {
+ it('prefixes the repository name when present', () => {
+  const item = makeRecent(42, 'Add feature');
+
+  expect(recentPullRequestDescription(item)).to.equal('Docs — Add feature');
+ });
+
+ it('omits the repository identifier when the name is missing (no raw GUID)', () => {
+  const item = makeRecent(42, 'Add feature');
+  const withoutName: RecentPullRequest = {
+   ...item,
+   ref: { ...item.ref, repositoryName: '' }
+  };
+
+  expect(recentPullRequestDescription(withoutName)).to.equal('Add feature');
+ });
+
+ it('treats a whitespace-only repository name as missing', () => {
+  const item = makeRecent(42, 'Add feature');
+  const blankName: RecentPullRequest = {
+   ...item,
+   ref: { ...item.ref, repositoryName: '   ' }
+  };
+
+  expect(recentPullRequestDescription(blankName)).to.equal('Add feature');
  });
 });
 
