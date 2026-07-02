@@ -3,7 +3,9 @@
 import { expect } from 'chai';
 import {
  addRecentPullRequest,
+ MAX_RECENT_PULL_REQUESTS,
  parseStoredRecentPullRequests,
+ RECENT_PULL_REQUESTS_STATE_KEY,
  recentPullRequestFromPullRequest,
  recentPullRequestKey,
  type RecentPullRequest
@@ -11,6 +13,11 @@ import {
 import type { PullRequest } from '../../src/types';
 
 describe('recent PR cache', () => {
+ it('defines the persisted-state key and default cache limit', () => {
+  expect(RECENT_PULL_REQUESTS_STATE_KEY).to.equal('markdownPrReview.recentPullRequests');
+  expect(MAX_RECENT_PULL_REQUESTS).to.equal(10);
+ });
+
  it('creates a persisted recent item from a pull request', () => {
   const pr = makePullRequest(42, 'First PR');
   const item = recentPullRequestFromPullRequest(pr, '2026-07-02T20:00:00.000Z');
@@ -53,6 +60,39 @@ describe('recent PR cache', () => {
   };
 
   expect(recentPullRequestKey(lower.ref)).to.equal(recentPullRequestKey(upper.ref));
+ });
+
+ it('falls back to repository name when repository id is not available', () => {
+  const lower = makeRecent(42);
+  const upper: RecentPullRequest = {
+    ...lower,
+    ref: {
+      ...lower.ref,
+      repositoryId: '',
+      repositoryName: 'DOCS'
+    }
+  };
+  lower.ref = {
+    ...lower.ref,
+    repositoryId: '',
+    repositoryName: 'docs'
+  };
+
+  expect(recentPullRequestKey(lower.ref)).to.equal(recentPullRequestKey(upper.ref));
+ });
+
+ it('keeps repository id and repository name identities distinct', () => {
+  const withId = makeRecent(42);
+  const withName: RecentPullRequest = {
+    ...withId,
+    ref: {
+      ...withId.ref,
+      repositoryId: '',
+      repositoryName: 'DOCS'
+    }
+  };
+
+  expect(recentPullRequestKey(withName.ref)).to.not.equal(recentPullRequestKey(withId.ref));
  });
 
  it('drops malformed entries when reading stored state', () => {

@@ -81,4 +81,31 @@ describe('rendered-view session restoration', () => {
 
   expect(sessionMatchesMdprParts(session, PARTS)).to.equal(false);
  });
+
+ it('rejects sessions with different organization, project, or repository', () => {
+  const matchingSession = makeSession(PARTS);
+
+  expect(sessionMatchesMdprParts(makeSession({ ...PARTS, organization: 'Fabrikam' }), PARTS))
+    .to.equal(false);
+  expect(sessionMatchesMdprParts(makeSession({ ...PARTS, project: 'Other Project' }), PARTS))
+    .to.equal(false);
+  expect(sessionMatchesMdprParts(makeSession({
+    ...PARTS,
+    repositoryId: 'fedcba98-7654-3210-fedc-ba9876543210'
+  }), PARTS)).to.equal(false);
+  expect(sessionMatchesMdprParts(matchingSession, PARTS)).to.equal(true);
+ });
 });
+
+function makeSession(parts: MdprSessionParts): Pick<Session, 'pr'> {
+ return {
+  pr: {
+    ref: pullRequestRefFromMdprParts(parts),
+    title: 'Restored PR',
+    sourceRefName: 'refs/heads/feature/restored',
+    targetRefName: 'refs/heads/main',
+    lastMergeSourceCommit: { commitId: 'abc123' },
+    status: 'active'
+  }
+ };
+}
