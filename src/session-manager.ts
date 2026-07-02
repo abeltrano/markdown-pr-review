@@ -16,12 +16,24 @@ import { getLogger } from './logger';
 import { render as renderMarkdown } from './renderer';
 import { annotateBlockDiff } from './renderer/diff-annotator';
 import { parseMdprUri } from './mdpr-uri';
+import {
+ pullRequestRefFromMdprParts,
+ sessionKeyFromMdprParts,
+ sessionMatchesMdprParts
+} from './session-restore';
+import {
+ RECENT_PULL_REQUESTS_STATE_KEY,
+ addRecentPullRequest,
+ parseStoredRecentPullRequests,
+ recentPullRequestFromPullRequest
+} from './recent-prs';
 import { buildRenderedViewCsp, generateNonce } from './views/csp';
 import { surfaceError, toErrorPayload } from './error-utils';
 import type { AuthManager } from './auth-manager';
 import type {
  HostToRenderedView,
  PostThreadRequest,
+ PullRequest,
  PullRequestRef,
  RenderedViewInitPayload,
  RenderedViewToHost,
@@ -41,6 +53,7 @@ export class SessionManager {
  private commentController: CommentController | null = null;
  private inputView: CommentInputViewProvider | null = null;
  private disposables: vscode.Disposable[] = [];
+ private pendingSessionRestore: { key: string; promise: Promise<void> } | null = null;
  // Per-webview ready signal: resolves when the webview's script has
  // attached its `message` listener and posted `ready`. We MUST wait on
  // this before postMessage(init), otherwise the very first message is
@@ -122,6 +135,7 @@ export class SessionManager {
    onThreadPosted: (thread) => this.recordPostedThread(thread)
   });
 
+  await this.recordRecentPullRequest(pr);
   this._onSessionChanged.fire(session);
   this.log.info(`PR loaded — ${pr.title} (${files.length} files, ${threads.length} threads)`);
  }
@@ -138,8 +152,18 @@ export class SessionManager {
  }
 
  async attachRenderedView(uri: vscode.Uri, panel: vscode.WebviewPanel): Promise<void> {
-  const session = this.requireSession();
   const parsed = parseMdprUri(uri.toString());
+  try {
+   await this.ensureSessionForRenderedView(parsed);
+  } catch (err) {
+   this.log.error('Failed to restore session for rendered view.', {
+    filePath: parsed.filePath,
+    error: err instanceof Error ? err.message : String(err)
+   });
+   await surfaceError(err, `Restore ${parsed.filePath}`);
+   throw err;
+  }
+  const session = this.requireSession();
   const filePath = parsed.filePath;
   const uriKey = uri.toString();
   session.openedEditors.set(uriKey, panel);
@@ -357,6 +381,37 @@ export class SessionManager {
   }
  }
 
+ private async ensureSessionForRenderedView(
+  parsed: ReturnType<typeof parseMdprUri>
+ ): Promise<void> {
+  const session = this.activeSession;
+  if (session && sessionMatchesMdprParts(session, parsed)) {
+   return;
+  }
+
+  const key = sessionKeyFromMdprParts(parsed);
+  if (this.pendingSessionRestore?.key === key) {
+   await this.pendingSessionRestore.promise;
+   return;
+  }
+
+  this.log.info('Restoring session for rendered view.', {
+   organization: parsed.organization,
+   project: parsed.project,
+   repositoryId: parsed.repositoryId,
+   pullRequestId: parsed.pullRequestId
+  });
+  const promise = this.openPullRequest(pullRequestRefFromMdprParts(parsed));
+  this.pendingSessionRestore = { key, promise };
+  try {
+   await promise;
+  } finally {
+   if (this.pendingSessionRestore?.promise === promise) {
+    this.pendingSessionRestore = null;
+   }
+  }
+ }
+
  private async handleRenderedViewMessage(uriStr: string, msg: RenderedViewToHost): Promise<void> {
   switch (msg.type) {
    case 'ready':
@@ -433,6 +488,24 @@ export class SessionManager {
    throw new Error('No active session. Open a pull request first.');
   }
   return this.activeSession;
+ }
+
+ private async recordRecentPullRequest(
+  pr: PullRequest,
+  openedAt = new Date().toISOString()
+ ): Promise<void> {
+  try {
+   const existing = parseStoredRecentPullRequests(
+    this.context.globalState.get<unknown>(RECENT_PULL_REQUESTS_STATE_KEY)
+   );
+   const next = addRecentPullRequest(existing, recentPullRequestFromPullRequest(pr, openedAt));
+   await this.context.globalState.update(RECENT_PULL_REQUESTS_STATE_KEY, next);
+  } catch (err) {
+   this.log.warn('Failed to persist recent pull request.', {
+    pullRequestId: pr.ref.pullRequestId,
+    error: err instanceof Error ? err.message : String(err)
+   });
+  }
  }
 
  /**

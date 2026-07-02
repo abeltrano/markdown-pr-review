@@ -154,7 +154,7 @@ c8 thresholds live in the `c8` block of
 | `src/renderer/**`                           | Files that `import` from `'vscode'` (cannot run under mocha + tsx)  |
 | `src/selection-mapper/**`                   | `src/views/rendered-view/**` and `src/views/comment-input/**` (browser-only bundles) |
 | `src/redact.ts`, `src/pr-url-parser.ts`     | `src/types.ts` (interface-only, no executable code)                 |
-| `src/error-classification.ts`, `ado-errors.ts` | `src/ado-client.ts`, `src/comment-controller.ts` (testable but currently untested — see below) |
+| `src/error-classification.ts`, `ado-errors.ts` | VS Code-bound tree providers; `src/ado-client.ts`, `src/comment-controller.ts` (testable but currently untested — see below) |
 
 Thresholds: **93% lines/statements**, **95% functions**, **80%
 branches**. They sit just under the current measured values

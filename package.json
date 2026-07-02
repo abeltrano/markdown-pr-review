@@ -39,6 +39,7 @@
   "activationEvents": [
     "onCommand:markdownPrReview.openPullRequest",
     "onView:markdownPrReview.fileTree",
+    "onView:markdownPrReview.recentPullRequests",
     "onView:markdownPrReview.commentInput",
     "onCustomEditor:markdownPrReview.renderedView"
   ],
@@ -56,6 +57,18 @@
         "title": "Refresh Threads",
         "category": "Markdown PR Review",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "markdownPrReview.showMarkdownOnly",
+        "title": "Show Markdown Files Only",
+        "category": "Markdown PR Review",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "markdownPrReview.showAllFiles",
+        "title": "Show All Files",
+        "category": "Markdown PR Review",
+        "icon": "$(filter-filled)"
       },
       {
         "command": "markdownPrReview.addComment",
@@ -109,6 +122,11 @@
           "icon": "$(files)"
         },
         {
+          "id": "markdownPrReview.recentPullRequests",
+          "name": "Recent Pull Requests",
+          "icon": "$(history)"
+        },
+        {
           "id": "markdownPrReview.commentInput",
           "name": "Comment Input",
           "type": "webview",
@@ -119,14 +137,24 @@
     "menus": {
       "view/title": [
         {
-          "command": "markdownPrReview.refreshThreads",
-          "when": "view == markdownPrReview.fileTree",
-          "group": "navigation"
-        },
-        {
           "command": "markdownPrReview.openPullRequest",
           "when": "view == markdownPrReview.fileTree",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "markdownPrReview.showMarkdownOnly",
+          "when": "view == markdownPrReview.fileTree && !markdownPrReview.markdownOnly",
+          "group": "navigation@2"
+        },
+        {
+          "command": "markdownPrReview.showAllFiles",
+          "when": "view == markdownPrReview.fileTree && markdownPrReview.markdownOnly",
+          "group": "navigation@2"
+        },
+        {
+          "command": "markdownPrReview.refreshThreads",
+          "when": "view == markdownPrReview.fileTree",
+          "group": "navigation@3"
         }
       ]
     },
@@ -204,6 +232,7 @@
       "src/views/file-decoration-provider.ts",
       "src/views/mdpr-content-provider.ts",
       "src/views/file-tree-provider.ts",
+      "src/views/recent-pr-tree-provider.ts",
       "src/views/rendered-view/**",
       "src/views/comment-input/**",
       "src/ado-client.ts",

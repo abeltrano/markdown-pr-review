@@ -54,7 +54,8 @@ sources). Configuration lives in the `c8` block of
 [`package.json`](../package.json). It excludes files that `import`
 from `'vscode'` (cannot run under mocha + tsx), the browser-only
 webview bundles in `src/views/rendered-view/` and
-`src/views/comment-input/`, and `src/types.ts` (interface-only).
+`src/views/comment-input/`, VS Code-bound tree providers, and
+`src/types.ts` (interface-only).
 Thresholds (93% lines/statements, 95% functions, 80% branches) gate
 the unit-testable surface — CI's `coverage` job fails on regression
 and uploads `lcov.info` to Codecov.

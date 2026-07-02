@@ -11,11 +11,14 @@
 
 import * as vscode from 'vscode';
 import type { ChangedFile, Thread } from '../types';
+import { getLogger } from '../logger';
 import { buildMdprUri } from '../mdpr-uri';
 import type { SessionManager } from '../session-manager';
 import type { CommentThreadDecorationProvider } from './file-decoration-provider';
 
+const MARKDOWN_ONLY_KEY = 'markdownPrReview.markdownOnly';
 const NON_MARKDOWN_INFO_COMMAND = 'markdownPrReview.showNonMarkdownInfo';
+const NO_MARKDOWN_FILES_LABEL = 'No markdown files in this PR.';
 
 export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
  private readonly _onDidChangeTreeData = new vscode.EventEmitter<
@@ -23,11 +26,18 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
  >();
  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
  private readonly infoCommand: vscode.Disposable;
+ private markdownOnly: boolean;
 
  constructor(
+  private readonly context: vscode.ExtensionContext,
   private readonly sessionManager: SessionManager,
   private readonly decorationProvider: CommentThreadDecorationProvider
  ) {
+  const log = getLogger('FileTreeProvider');
+  this.markdownOnly = context.globalState.get<boolean>(MARKDOWN_ONLY_KEY, false);
+  this.updateMarkdownOnlyContext().then(undefined, () => {
+   log.warn('Failed to initialize markdown-only tree context.');
+  });
   sessionManager.onSessionChanged(() => this.refresh());
   sessionManager.onThreadsChanged(() => this.refresh());
   this.infoCommand = vscode.commands.registerCommand(
@@ -47,6 +57,17 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
  refresh(): void {
   this.updateDecorations();
   this._onDidChangeTreeData.fire();
+ }
+
+ async setMarkdownOnly(value: boolean): Promise<void> {
+  this.markdownOnly = value;
+  await this.context.globalState.update(MARKDOWN_ONLY_KEY, value);
+  await this.updateMarkdownOnlyContext();
+  this.refresh();
+ }
+
+ private async updateMarkdownOnlyContext(): Promise<void> {
+  await vscode.commands.executeCommand('setContext', MARKDOWN_ONLY_KEY, this.markdownOnly);
  }
 
  private updateDecorations(): void {
@@ -142,7 +163,19 @@ export class FileTreeProvider implements vscode.TreeDataProvider<FileNode> {
    ];
   }
   if (!node) {
-   return groupFilesByDirectory(session.files, session.threads);
+   const files = this.markdownOnly
+    ? session.files.filter(file => file.isMarkdown)
+    : session.files;
+   if (this.markdownOnly && files.length === 0) {
+    return [
+     {
+      kind: 'message',
+      label: NO_MARKDOWN_FILES_LABEL,
+      tooltip: 'Turn off the markdown-only filter to show all changed files.'
+     }
+    ];
+   }
+   return groupFilesByDirectory(files, session.threads);
   }
   if (node.kind === 'directory') {
    return node.children;

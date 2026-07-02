@@ -16,6 +16,7 @@ import { CommentInputViewProvider } from './comment-input-view-provider';
 import { RenderedViewEditorProvider } from './views/custom-editor-provider';
 import { MdprContentProvider } from './views/mdpr-content-provider';
 import { FileTreeProvider } from './views/file-tree-provider';
+import { RecentPullRequestTreeProvider } from './views/recent-pr-tree-provider';
 import { CommentThreadDecorationProvider } from './views/file-decoration-provider';
 import { registerCommands } from './command-registry';
 import { StatusBarController } from './status-bar';
@@ -67,13 +68,26 @@ export function activate(context: vscode.ExtensionContext): void {
   decorationProvider,
   vscode.window.registerFileDecorationProvider(decorationProvider)
  );
- const treeProvider = new FileTreeProvider(sessionManager, decorationProvider);
+ const treeProvider = new FileTreeProvider(context, sessionManager, decorationProvider);
  context.subscriptions.push(
+  treeProvider,
   vscode.window.registerTreeDataProvider('markdownPrReview.fileTree', treeProvider)
+ );
+ const recentPrProvider = new RecentPullRequestTreeProvider(context, sessionManager);
+ context.subscriptions.push(
+  vscode.window.registerTreeDataProvider('markdownPrReview.recentPullRequests', recentPrProvider)
  );
 
  // Commands.
  registerCommands(context, sessionManager, inputView);
+ context.subscriptions.push(
+  vscode.commands.registerCommand('markdownPrReview.showMarkdownOnly', () =>
+   treeProvider.setMarkdownOnly(true)
+  ),
+  vscode.commands.registerCommand('markdownPrReview.showAllFiles', () =>
+   treeProvider.setMarkdownOnly(false)
+  )
+ );
 
  // Status bar + stale watcher wired to session events.
  const refreshStatusBar = (): void => {
