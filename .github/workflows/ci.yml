@@ -1,5 +1,5 @@
 # Lint + type-check + test on every push to main and every PR.
-# Runs on Node 20 to match package.json engines.node and the local dev env.
+# Runs on the Node version pinned in .nvmrc to match package.json engines.node and the local dev env.
 # The build job runs on a matrix of ubuntu-latest, macos-latest, and
 # windows-latest so platform-specific regressions (path separators, EOL
 # handling, file-watcher behaviour, SecretStorage backends) are caught
@@ -43,10 +43,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies (npm ci)
@@ -74,10 +74,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies (npm ci)
