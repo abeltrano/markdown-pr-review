@@ -84,6 +84,18 @@
         "command": "markdownPrReview.closeSession",
         "title": "Close Session",
         "category": "Markdown PR Review"
+      },
+      {
+        "command": "markdownPrReview.closePullRequest",
+        "title": "Close Pull Request",
+        "category": "Markdown PR Review",
+        "icon": "$(close)"
+      },
+      {
+        "command": "markdownPrReview.closeAllPullRequests",
+        "title": "Close All Pull Requests",
+        "category": "Markdown PR Review",
+        "icon": "$(close-all)"
       }
     ],
     "keybindings": [
@@ -155,6 +167,18 @@
           "command": "markdownPrReview.refreshThreads",
           "when": "view == markdownPrReview.fileTree",
           "group": "navigation@3"
+        },
+        {
+          "command": "markdownPrReview.closeAllPullRequests",
+          "when": "view == markdownPrReview.fileTree",
+          "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "markdownPrReview.closePullRequest",
+          "when": "view == markdownPrReview.fileTree && viewItem == markdownPrReviewPullRequest",
+          "group": "inline"
         }
       ]
     },

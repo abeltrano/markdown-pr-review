@@ -19,36 +19,42 @@ const MAX_CONSECUTIVE_FAILURES_BEFORE_WARN = 3;
 
 export class StalePRWatcher implements vscode.Disposable {
  private readonly log: Logger;
- private session: Session | null = null;
+ // Watch every open PR session (keyed by Session.id) with a single shared
+ // timer so multiple simultaneously-open PRs all get stale-head detection.
+ private sessions = new Map<string, Session>();
+ private failures = new Map<string, number>();
  private timer: NodeJS.Timeout | null = null;
- private consecutiveFailures = 0;
- private stopped = true;
 
  constructor(private readonly adoClient: AdoClient, log?: Logger) {
   this.log = log ?? getLogger('StalePRWatcher');
  }
 
- start(session: Session): void {
-  this.stop();
-  this.session = session;
-  this.consecutiveFailures = 0;
-  this.stopped = false;
-  const intervalMs = this.resolvePollSeconds() * 1000;
-  this.timer = setInterval(() => void this.tick(), intervalMs);
-  this.log.info('Stale-PR watcher started.', { intervalMs });
+ /** Replace the watched set with the currently-open sessions. */
+ setSessions(sessions: Session[]): void {
+  this.sessions = new Map(sessions.map((s) => [s.id, s]));
+  for (const id of [...this.failures.keys()]) {
+   if (!this.sessions.has(id)) this.failures.delete(id);
+  }
+  if (this.sessions.size === 0) {
+   this.stopTimer();
+  } else if (!this.timer) {
+   const intervalMs = this.resolvePollSeconds() * 1000;
+   this.timer = setInterval(() => void this.tickAll(), intervalMs);
+   this.log.info('Stale-PR watcher started.', { intervalMs });
+  }
  }
 
- stop(): void {
-  this.stopped = true;
+ private stopTimer(): void {
   if (this.timer) {
    clearInterval(this.timer);
    this.timer = null;
   }
-  this.session = null;
  }
 
  dispose(): void {
-  this.stop();
+  this.stopTimer();
+  this.sessions.clear();
+  this.failures.clear();
  }
 
  private resolvePollSeconds(): number {
@@ -58,25 +64,32 @@ export class StalePRWatcher implements vscode.Disposable {
   return Math.min(MAX_POLL_SECONDS, Math.max(MIN_POLL_SECONDS, n));
  }
 
- private async tick(): Promise<void> {
-  const session = this.session;
-  if (!session || this.stopped) return;
+ private async tickAll(): Promise<void> {
+  for (const session of [...this.sessions.values()]) {
+   await this.tick(session);
+  }
+ }
+
+ private async tick(session: Session): Promise<void> {
+  if (!this.sessions.has(session.id)) return;
   try {
    const pr = await this.adoClient.getPullRequest(session.pr.ref);
-   this.consecutiveFailures = 0;
+   this.failures.delete(session.id);
    const latestHead = pr.lastMergeSourceCommit.commitId;
    if (latestHead && latestHead !== session.headSha) {
     this.log.info('Detected stale head commit.', {
+     pullRequestId: session.pr.ref.pullRequestId,
      oldHead: session.headSha,
      newHead: latestHead
     });
     this.notifyPanels(session, latestHead);
    }
   } catch (err) {
-   this.consecutiveFailures++;
-   if (this.consecutiveFailures === MAX_CONSECUTIVE_FAILURES_BEFORE_WARN) {
+   const next = (this.failures.get(session.id) ?? 0) + 1;
+   this.failures.set(session.id, next);
+   if (next === MAX_CONSECUTIVE_FAILURES_BEFORE_WARN) {
     this.log.warn(
-     `Stale-PR watcher has failed ${this.consecutiveFailures} times in a row — continuing in background.`,
+     `Stale-PR watcher has failed ${next} times in a row for PR ${session.pr.ref.pullRequestId} — continuing in background.`,
      { error: err instanceof Error ? err.message : String(err) }
     );
    }
