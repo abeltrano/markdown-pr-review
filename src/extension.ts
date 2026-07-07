@@ -99,21 +99,36 @@ export function activate(context: vscode.ExtensionContext): void {
      await sessionManager.closePullRequestByRef(node.session.pr.ref);
     }
    }
+  ),
+  vscode.commands.registerCommand(
+   'markdownPrReview.closeAllPullRequests',
+   () => sessionManager.disposeAll()
   )
  );
 
- // Status bar + stale watcher wired to session events.
+ // Status bar + stale watcher wired to session + editor-focus events.
+ const activeRenderedViewUri = (): string | null => {
+  const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+  if (
+   input instanceof vscode.TabInputCustom &&
+   input.viewType === RenderedViewEditorProvider.viewType
+  ) {
+   return input.uri.toString();
+  }
+  return null;
+ };
+
  const refreshStatusBar = (): void => {
   const session = sessionManager.getActiveSession();
   if (!session) {
    statusBar.hide();
    return;
   }
-  const activeEditor = vscode.window.activeTextEditor;
   let fileName: string | null = null;
-  if (activeEditor && activeEditor.document.uri.scheme === 'mdpr') {
+  const uri = activeRenderedViewUri();
+  if (uri) {
    try {
-    fileName = parseMdprUri(activeEditor.document.uri.toString()).filePath.split('/').pop() ?? null;
+    fileName = parseMdprUri(uri).filePath.split('/').pop() ?? null;
    } catch {
     fileName = null;
    }
@@ -121,17 +136,23 @@ export function activate(context: vscode.ExtensionContext): void {
   statusBar.update(session, fileName);
  };
 
+ // The active PR follows the focused rendered-view editor tab.
+ const syncActiveToFocusedEditor = (): void => {
+  const uri = activeRenderedViewUri();
+  if (uri) {
+   sessionManager.setActiveByUri(uri);
+  }
+  refreshStatusBar();
+ };
+
  context.subscriptions.push(
-  sessionManager.onSessionChanged((session) => {
-   if (session) {
-    staleWatcher.start(session);
-   } else {
-    staleWatcher.stop();
-   }
+  sessionManager.onSessionChanged(() => {
+   staleWatcher.setSessions(sessionManager.getOpenSessions());
    refreshStatusBar();
   }),
   sessionManager.onThreadsChanged(refreshStatusBar),
-  vscode.window.onDidChangeActiveTextEditor(refreshStatusBar),
+  vscode.window.tabGroups.onDidChangeTabGroups(syncActiveToFocusedEditor),
+  vscode.window.tabGroups.onDidChangeTabs(syncActiveToFocusedEditor),
   statusBar,
   staleWatcher
  );

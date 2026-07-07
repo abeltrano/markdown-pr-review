@@ -122,6 +122,18 @@ export class SessionManager {
    this.sessions.get(this.activeSessionKey) === session;
  }
 
+ /**
+  * Make the session for an mdpr:// URI active so the active PR follows the
+  * focused rendered-view editor tab. No-op when that PR is not open or is
+  * already active.
+  */
+ setActiveByUri(uriStr: string): void {
+  const key = this.keyForUri(uriStr);
+  if (!key || !this.sessions.has(key) || this.activeSessionKey === key) return;
+  this.activeSessionKey = key;
+  this._onSessionChanged.fire(this.getActiveSession());
+ }
+
  /** Close (dispose) the session for a given PR ref, if it is open. */
  async closePullRequestByRef(ref: PullRequestRef): Promise<void> {
   await this.disposeSession(this.keyForRef(ref));
