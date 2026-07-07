@@ -118,10 +118,10 @@ jobs:
             exit 1
           fi
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies (npm ci)
@@ -215,10 +215,12 @@ jobs:
         with:
           name: release-bundle
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          # This job does not check out the repo, so .nvmrc is unavailable —
+          # pin the same major line as .nvmrc / engines.node.
+          node-version: '24'
 
       - name: Install vsce (global, no project deps)
         run: npm install --global @vscode/vsce@^3.9.2

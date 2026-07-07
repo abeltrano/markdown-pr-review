@@ -20,7 +20,7 @@
   },
   "engines": {
     "vscode": "^1.85.0",
-    "node": ">=20"
+    "node": ">=24"
   },
   "categories": [
     "SCM Providers",
