@@ -25,9 +25,9 @@ export class MdprContentProvider implements vscode.TextDocumentContentProvider {
  constructor(private readonly sessionManager: SessionManager) {}
 
  provideTextDocumentContent(uri: vscode.Uri): string {
-  const session = this.sessionManager.getActiveSession();
+  const session = this.sessionManager.getSessionForUri(uri.toString());
   if (!session) {
-   this.log.warn('provideTextDocumentContent: no active session', { uri: uri.toString() });
+   this.log.warn('provideTextDocumentContent: no session for uri', { uri: uri.toString() });
    return '';
   }
   try {
