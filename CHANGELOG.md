@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [git-cliff]: https://git-cliff.org
 
 
+## [0.5.0] - 2026-07-07
+
+### 🚀 Features
+
+- Support multiple simultaneous PRs (Option B) ([#64](https://github.com/abeltrano/markdown-pr-review/pull/64))
+
+### Other
+
+- Restore rendered markdown tabs after VS Code reload ([#62](https://github.com/abeltrano/markdown-pr-review/pull/62))
+
+### ⚙️ CI
+
+- *(dependabot)* Group npm minor/patch and all github-actions updates ([#57](https://github.com/abeltrano/markdown-pr-review/pull/57))
+- *(dependabot)* Group npm security updates into a single PR ([#60](https://github.com/abeltrano/markdown-pr-review/pull/60))
+
 ## [0.4.26] - 2026-07-02
 
 ### 🐛 Bug Fixes
