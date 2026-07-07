@@ -59,17 +59,24 @@ describe('TC-145 — log redaction', () => {
   it('completes in bounded time on pathological "eyJ"-repeated input (ReDoS regression)', function () {
    // Guards against CodeQL js/polynomial-redos regression on JWT_LIKE_REGEX.
    // The original `[A-Za-z0-9_-]+` quantifier exhibited polynomial-time
-   // backtracking on inputs like "eyJeyJeyJ..." (~90s for 160K
-   // repetitions). The bounded-atomic rewrite makes scanning linear in
-   // input length. Pick a budget loose enough to absorb CI noise while
-   // tight enough to fail catastrophically if backtracking returns.
-   this.timeout(2000);
+   // backtracking on inputs like "eyJeyJeyJ..." (~90s for 160K repetitions).
+   // The bounded-atomic rewrite makes scanning linear in input length, but
+   // with a large per-position constant (the {1,8192} lookahead re-match at
+   // every "eyJ"), so the legitimate run of this 150K-char input takes on the
+   // order of ~1.5s on CI hardware. The budget therefore must sit comfortably
+   // ABOVE that real runtime (so ordinary scheduling jitter can't trip it)
+   // while staying far below a catastrophic-backtracking regression, which is
+   // ~90s here — two orders of magnitude away. 6s gives ~4x headroom over the
+   // linear runtime and ~15x margin below a regression; the local timeout is
+   // set above the budget so the elapsed assertion (not a mocha timeout)
+   // reports a genuine regression.
+   this.timeout(8000);
    const input = 'eyJ'.repeat(50_000);
    const start = Date.now();
    const out = redactJwtsAndUrlTokens(input);
    const elapsed = Date.now() - start;
    expect(out).to.equal(input);
-   expect(elapsed).to.be.lessThan(1500);
+   expect(elapsed).to.be.lessThan(6000);
   });
  });
 

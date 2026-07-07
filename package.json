@@ -2,7 +2,7 @@
   "name": "md-pr-review",
   "displayName": "Azure DevOps Markdown PR Review",
   "description": "Review markdown pull-request files in a rendered view and post comments anchored to raw line ranges.",
-  "version": "0.4.26",
+  "version": "0.5.0",
   "publisher": "abeltrano",
   "license": "MIT",
   "repository": {
@@ -84,6 +84,18 @@
         "command": "markdownPrReview.closeSession",
         "title": "Close Session",
         "category": "Markdown PR Review"
+      },
+      {
+        "command": "markdownPrReview.closePullRequest",
+        "title": "Close Pull Request",
+        "category": "Markdown PR Review",
+        "icon": "$(close)"
+      },
+      {
+        "command": "markdownPrReview.closeAllPullRequests",
+        "title": "Close All Pull Requests",
+        "category": "Markdown PR Review",
+        "icon": "$(close-all)"
       }
     ],
     "keybindings": [
@@ -155,6 +167,18 @@
           "command": "markdownPrReview.refreshThreads",
           "when": "view == markdownPrReview.fileTree",
           "group": "navigation@3"
+        },
+        {
+          "command": "markdownPrReview.closeAllPullRequests",
+          "when": "view == markdownPrReview.fileTree",
+          "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "markdownPrReview.closePullRequest",
+          "when": "view == markdownPrReview.fileTree && viewItem == markdownPrReviewPullRequest",
+          "group": "inline"
         }
       ]
     },
@@ -258,21 +282,21 @@
     "@types/diff": "^8.0.0",
     "@types/markdown-it": "^14.1.2",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.9.2",
-    "@types/vscode": "^1.85.0",
+    "@types/node": "^26.1.0",
+    "@types/vscode": "^1.125.0",
     "@vscode/codicons": "^0.0.45",
     "@vscode/vsce": "^3.9.2",
     "c8": "^11.0.0",
     "chai": "^6.2.2",
     "esbuild": "^0.28.1",
-    "eslint": "^10.4.1",
+    "eslint": "^10.6.0",
     "git-cliff": "^2.13.1",
     "mocha": "^11.7.6",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.60.1"
+    "typescript-eslint": "^8.63.0"
   },
   "dependencies": {
     "diff": "^9.0.0",

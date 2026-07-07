@@ -74,10 +74,10 @@ export class CommentController {
   }
  }
 
- async handlePostThread(req: PostThreadRequest): Promise<void> {
+ async handlePostThread(req: PostThreadRequest): Promise<boolean> {
   if (!this.currentDraft) {
    this.log.warn('Post requested with no active draft; ignoring.');
-   return;
+   return false;
   }
   try {
    const thread = await this.deps.adoClient.createThread(this.deps.pullRequestRef, {
@@ -90,10 +90,12 @@ export class CommentController {
    this.currentDraft = null;
    this.deps.inputView.clearDraft();
    this.deps.onThreadPosted(thread);
+   return true;
   } catch (err) {
    const msg = err instanceof Error ? err.message : String(err);
    this.log.error('Thread post failed.', msg);
    this.deps.inputView.showError('ERR_POST_THREAD', msg, true);
+   return false;
   }
  }
 
