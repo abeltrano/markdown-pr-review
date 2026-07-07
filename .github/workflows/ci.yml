@@ -41,7 +41,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v6
@@ -65,14 +65,14 @@ jobs:
     name: coverage
     runs-on: ubuntu-latest
     # id-token: write is required for Codecov's tokenless OIDC upload
-    # flow (codecov/codecov-action@v6 with use_oidc: true). contents:read
+    # flow (codecov/codecov-action@v7 with use_oidc: true). contents:read
     # is the default minimum needed for actions/checkout.
     permissions:
       contents: read
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v6
@@ -93,7 +93,7 @@ jobs:
         # Node 24 on June 16, 2026 and remove Node 20 on September 16,
         # 2026 — see
         # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/.
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: ./coverage/lcov.info
           disable_search: true
