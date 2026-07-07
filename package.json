@@ -84,6 +84,12 @@
         "command": "markdownPrReview.closeSession",
         "title": "Close Session",
         "category": "Markdown PR Review"
+      },
+      {
+        "command": "markdownPrReview.closePullRequest",
+        "title": "Close Pull Request",
+        "category": "Markdown PR Review",
+        "icon": "$(close)"
       }
     ],
     "keybindings": [
@@ -155,6 +161,13 @@
           "command": "markdownPrReview.refreshThreads",
           "when": "view == markdownPrReview.fileTree",
           "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "markdownPrReview.closePullRequest",
+          "when": "view == markdownPrReview.fileTree && viewItem == markdownPrReviewPullRequest",
+          "group": "inline"
         }
       ]
     },

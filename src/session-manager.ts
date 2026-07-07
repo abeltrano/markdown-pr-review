@@ -111,6 +111,22 @@ export class SessionManager {
   return key ? this.sessions.get(key) ?? null : null;
  }
 
+ /** All currently open PR sessions, in open (insertion) order. */
+ getOpenSessions(): Session[] {
+  return [...this.sessions.values()];
+ }
+
+ /** True when the given session is the currently active one. */
+ isActiveSession(session: Session): boolean {
+  return this.activeSessionKey != null &&
+   this.sessions.get(this.activeSessionKey) === session;
+ }
+
+ /** Close (dispose) the session for a given PR ref, if it is open. */
+ async closePullRequestByRef(ref: PullRequestRef): Promise<void> {
+  await this.disposeSession(this.keyForRef(ref));
+ }
+
  private keyForRef(ref: PullRequestRef): string {
   return sessionKeyFromMdprParts({
    organization: ref.organization,

@@ -22,6 +22,11 @@ import { registerCommands } from './command-registry';
 import { StatusBarController } from './status-bar';
 import { StalePRWatcher } from './stale-pr-watcher';
 import { MDPR_SCHEME, parseMdprUri } from './mdpr-uri';
+import type { PullRequestRef } from './types';
+
+interface ClosePullRequestTreeNode {
+ session?: { pr: { ref: PullRequestRef } };
+}
 
 export function activate(context: vscode.ExtensionContext): void {
  const log = getLogger('Extension');
@@ -86,6 +91,14 @@ export function activate(context: vscode.ExtensionContext): void {
   ),
   vscode.commands.registerCommand('markdownPrReview.showAllFiles', () =>
    treeProvider.setMarkdownOnly(false)
+  ),
+  vscode.commands.registerCommand(
+   'markdownPrReview.closePullRequest',
+   async (node?: ClosePullRequestTreeNode) => {
+    if (node?.session) {
+     await sessionManager.closePullRequestByRef(node.session.pr.ref);
+    }
+   }
   )
  );
 
