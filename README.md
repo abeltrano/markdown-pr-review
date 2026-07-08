@@ -6,37 +6,27 @@
 [![Visual Studio Marketplace Version](https://vsmarketplacebadges.dev/version-short/abeltrano.md-pr-review.svg)](https://marketplace.visualstudio.com/items?itemName=abeltrano.md-pr-review)
 [![Visual Studio Marketplace Installs](https://vsmarketplacebadges.dev/installs-short/abeltrano.md-pr-review.svg)](https://marketplace.visualstudio.com/items?itemName=abeltrano.md-pr-review)
 
-> ⚠️ **Unofficial community extension.** Not affiliated with, endorsed
-> by, or supported by Microsoft, the Azure DevOps team, GitHub, or any
-> SCM vendor. Issues and feature requests should be filed against this
-> repository, not Microsoft or GitHub support.
-
-> A Visual Studio Code extension that lets you review markdown design
-> and architecture documents in pull requests using a **fully rendered
-> markdown view** — and create PR comment threads by selecting text
-> directly in the rendered content.
+> A Visual Studio Code extension for reviewing markdown files in pull
+> requests using a fully rendered view — select text directly in the
+> rendered content to create PR comment threads anchored to the
+> underlying lines.
 
 ![Demo: opening an Azure DevOps PR, selecting rendered markdown, posting a comment, and seeing the inline marker appear](media/demo.gif)
-
-Closes the regression introduced when teams migrated from Word-based
-design-doc review to PR-based review of markdown in source control,
-where SCM tools only support commenting on raw markdown lines.
 
 ---
 
 ## Why this exists
 
-When a `.docx` design doc was reviewed by passing the file around,
-reviewers used Word's review track to comment on rendered prose, see
-diagrams as diagrams, and call out specific phrases in context.
+Reviewing a markdown file in a pull request normally forces you onto a
+raw-markdown diff: formatting is erased, mermaid diagrams are walls of
+source, and pinning a comment to "the second paragraph of section 3"
+means scrolling through lines of syntax.
 
-The same design doc, written in markdown and reviewed via a pull
-request, forces the reviewer onto a raw-markdown diff view: formatting
-is erased, mermaid diagrams are walls of source, and selecting "the
-second paragraph of section 3" means scrolling lines of syntax. This
-extension restores the rendered-document review workflow for a single
-reviewer — markdown is rendered, mermaid is rendered, text selection
-works as you expect, and posting a comment creates a real PR thread.
+This extension renders the file the way you would actually read it —
+markdown is rendered, mermaid is rendered, and text selection works as
+you expect. Select any passage in the rendered view and post a comment;
+it becomes a real thread on the pull request, anchored to the
+underlying lines.
 
 ---
 
