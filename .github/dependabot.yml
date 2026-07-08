@@ -54,6 +54,15 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    # @types/vscode must not exceed engines.vscode (^1.85.0): a higher
+    # range makes `vsce package` fail ("@types/vscode X greater than
+    # engines.vscode Y"). Keep the range on the 1.85 line and bump it
+    # deliberately alongside engines.vscode, not automatically.
+    ignore:
+      - dependency-name: "@types/vscode"
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
