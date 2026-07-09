@@ -21,6 +21,16 @@ export interface PullRequestRef {
   pullRequestId: number;
 }
 
+/** ADO repository coordinates resolved from a git remote URL (REQ-CORE-008). */
+export interface AdoRepoCoordinates {
+  /** e.g., "contoso" (lower-cased) */
+  organization: string;
+  /** e.g., "MyProject" */
+  project: string;
+  /** human-readable repository name */
+  repositoryName: string;
+}
+
 export interface PullRequest {
   ref: PullRequestRef;
   title: string;

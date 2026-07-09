@@ -262,7 +262,8 @@
       "src/views/rendered-view/**",
       "src/views/comment-input/**",
       "src/ado-client.ts",
-      "src/comment-controller.ts"
+      "src/comment-controller.ts",
+      "src/git-context.ts"
     ],
     "reporter": [
       "text",
