@@ -115,6 +115,13 @@ flowchart TB
 - **Dependencies**: `markdownPrReview.defaultOrganization` and `markdownPrReview.defaultProject` from VS Code configuration (REQ-UX-002).
 - **Constraints**: Must accept BOTH `microsoft.visualstudio.com/{project}/_git/{repo}/pullrequest/{id}` AND `dev.azure.com/{org}/{project}/_git/{repo}/pullrequest/{id}`. Internally normalized to `dev.azure.com/{org}/...` to dodge legacy-host quirks (RISK-007 mitigation).
 
+#### Branch PR Discovery
+
+- **Responsibility**: Discover active PRs whose source branch is the current branch of the active workspace repository, and open the chosen one through the existing pipeline. (REQ-CORE-008, ASM-010)
+- **Interfaces**: The `markdownPrReview.openPullRequestForCurrentBranch` command orchestrates `resolveActiveBranchContext()` (`git-context.ts`) → `listActivePullRequestsBySourceBranch(coords, branch)` (ADO Client) per candidate remote → `dedupeDiscoveredPullRequests` + `toBranchPrQuickPickItems` (`branch-pr-picker.ts`) → `SessionManager.openPullRequest(ref)`.
+- **Dependencies**: the built-in VS Code Git extension API (`vscode.git`, read-only, under the CON-007 carve-out), ADO Client, Session Manager. Pure sub-modules: `ado-remote-parser.ts` (remote URL → coordinates), `discovered-pr.ts` (wire shape → `DiscoveredPullRequest`), `branch-pr-picker.ts` (Quick Pick items + ref).
+- **Constraints**: Reads only the branch name and remote URLs via the in-process Git API — never a git binary (CON-007) and never a workspace write (CON-006). Same-repo PRs only in v1; fork-sourced PRs are a documented non-goal (REQ-CORE-008 AC-3). The Quick Pick is shown even for a single match. The branch is queried as `refs/heads/{branch}`, single-encoded by `buildUrl`. Never logs a raw remote URL (may embed a PAT).
+
 #### Auth Manager
 
 - **Responsibility**: Obtain and refresh an ADO-scoped access token. (REQ-AUTH-001, REQ-AUTH-002, ASM-006, RISK-003)
@@ -340,6 +347,7 @@ All endpoints use base URL `https://dev.azure.com/{org}` (normalized from `micro
 | `/_apis/git/repositories/{repositoryId}/items?path={path}&versionDescriptor.version={sha}&versionDescriptor.versionType=commit&api-version=7.1` | GET (with `Accept: text/plain`) | Fetch file content at a specific commit | REQ-CORE-004, REQ-DIFF-002 |
 | `/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version=7.1` | GET | List all comment threads on the PR | REQ-COMMENT-005 |
 | `/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version=7.1` | POST | Create a new comment thread | REQ-COMMENT-004 |
+| `/_apis/git/repositories/{repositoryId}/pullrequests?searchCriteria.sourceRefName=refs/heads/{branch}&searchCriteria.status=active&api-version=7.1` | GET | List active PRs whose source branch is `{branch}` (active-branch discovery); the raw ref value is passed to `buildUrl`, which percent-encodes it exactly once | REQ-CORE-008 |
 
 ##### Thread creation payload (REQ-COMMENT-004)
 
@@ -474,13 +482,13 @@ Each protocol carries an optional `protocolVersion: number` field on `init` / `r
 
 | Contribution point | Value | REQ |
 |---|---|---|
-| `commands` | `markdownPrReview.openPullRequest`, `markdownPrReview.refreshThreads`, `markdownPrReview.addComment`, `markdownPrReview.refreshToHead`, `markdownPrReview.showMarkdownOnly`, `markdownPrReview.showAllFiles`, `markdownPrReview.closeSession`, `markdownPrReview.closePullRequest`, `markdownPrReview.closeAllPullRequests` (the status-bar `markdownPrReview.focusRenderedView` is registered internally, not contributed) | REQ-CORE-001, REQ-UX-001, REQ-UX-003, REQ-COMMENT-001 AC-4, REQ-COMMENT-005 AC-3 |
+| `commands` | `markdownPrReview.openPullRequest`, `markdownPrReview.openPullRequestForCurrentBranch`, `markdownPrReview.refreshThreads`, `markdownPrReview.addComment`, `markdownPrReview.refreshToHead`, `markdownPrReview.showMarkdownOnly`, `markdownPrReview.showAllFiles`, `markdownPrReview.closeSession`, `markdownPrReview.closePullRequest`, `markdownPrReview.closeAllPullRequests` (the status-bar `markdownPrReview.focusRenderedView` is registered internally, not contributed) | REQ-CORE-001, REQ-CORE-008, REQ-UX-001, REQ-UX-003, REQ-COMMENT-001 AC-4, REQ-COMMENT-005 AC-3 |
 | `keybindings` | `markdownPrReview.addComment` → `ctrl+alt+c`; `markdownPrReview.refreshThreads` → `ctrl+alt+r`; `markdownPrReview.refreshToHead` → `f5` — all `when: activeCustomEditorId == 'markdownPrReview.renderedView'` (overridable) | REQ-UX-003 AC-1, REQ-COMMENT-001 AC-4 |
 | `configuration` | `markdownPrReview.defaultOrganization` (string, default `""`), `markdownPrReview.defaultProject` (string, default `""`), `markdownPrReview.staleCommitPollSeconds` (integer, default 30, min 15, max 60) | REQ-UX-002, REQ-ERR-002 AC-3 |
 | `viewsContainers.activitybar` | `markdownPrReview` container with an activity-bar icon (always present) | REQ-CORE-006, REQ-COMMENT-001 |
 | `views.markdownPrReview` | `markdownPrReview.fileTree` (TreeView), `markdownPrReview.recentPullRequests` (TreeView), `markdownPrReview.commentInput` (WebviewView) | REQ-CORE-006, REQ-COMMENT-001 AC-5 |
 | `customEditors` | `markdownPrReview.renderedView` (priority `option`, `displayName: "Markdown PR Review"`), selecting `*.md` / `*.markdown` / `*.mdx` | REQ-CORE-001 AC-2, REQ-CORE-005 |
-| `activationEvents` | `onCommand:markdownPrReview.openPullRequest`, `onView:markdownPrReview.fileTree`, `onView:markdownPrReview.recentPullRequests`, `onView:markdownPrReview.commentInput`, `onCustomEditor:markdownPrReview.renderedView` | NFR-PERF-001 (zero cold-start) |
+| `activationEvents` | `onCommand:markdownPrReview.openPullRequest`, `onCommand:markdownPrReview.openPullRequestForCurrentBranch`, `onView:markdownPrReview.fileTree`, `onView:markdownPrReview.recentPullRequests`, `onView:markdownPrReview.commentInput`, `onCustomEditor:markdownPrReview.renderedView` | NFR-PERF-001 (zero cold-start) |
 | `engines.vscode` | `^1.85.0` | REQ-NFR-COMPAT-001 AC-1 |
 
 Menu and keybinding `when` clauses use VS Code's built-in `activeCustomEditorId == 'markdownPrReview.renderedView'` context for rendered-view-focused actions, plus the `markdownPrReview.markdownOnly` context key set via `vscode.commands.executeCommand('setContext', ...)` by the FileTreeView to toggle the markdown-only filter.

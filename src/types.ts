@@ -21,6 +21,32 @@ export interface PullRequestRef {
   pullRequestId: number;
 }
 
+/** ADO repository coordinates resolved from a git remote URL (REQ-CORE-008). */
+export interface AdoRepoCoordinates {
+  /** e.g., "contoso" (lower-cased) */
+  organization: string;
+  /** e.g., "MyProject" */
+  project: string;
+  /** human-readable repository name */
+  repositoryName: string;
+}
+
+/** A pull request discovered by source-branch search (REQ-CORE-008). */
+export interface DiscoveredPullRequest {
+  pullRequestId: number;
+  title: string;
+  /** refs/heads/... */
+  sourceRefName: string;
+  /** refs/heads/... */
+  targetRefName: string;
+  isDraft: boolean;
+  /** createdBy.displayName */
+  author: string;
+  /** repository GUID — lets a fully-resolved ref be built without re-resolving */
+  repositoryId: string;
+  repositoryName: string;
+}
+
 export interface PullRequest {
   ref: PullRequestRef;
   title: string;

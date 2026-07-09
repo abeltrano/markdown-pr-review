@@ -38,6 +38,7 @@
   ],
   "activationEvents": [
     "onCommand:markdownPrReview.openPullRequest",
+    "onCommand:markdownPrReview.openPullRequestForCurrentBranch",
     "onView:markdownPrReview.fileTree",
     "onView:markdownPrReview.recentPullRequests",
     "onView:markdownPrReview.commentInput",
@@ -50,6 +51,12 @@
         "command": "markdownPrReview.openPullRequest",
         "title": "Open Pull Request…",
         "shortTitle": "Open PR",
+        "category": "Markdown PR Review"
+      },
+      {
+        "command": "markdownPrReview.openPullRequestForCurrentBranch",
+        "title": "Open Pull Request for Current Branch…",
+        "shortTitle": "Open PR for Branch",
         "category": "Markdown PR Review"
       },
       {
@@ -262,7 +269,8 @@
       "src/views/rendered-view/**",
       "src/views/comment-input/**",
       "src/ado-client.ts",
-      "src/comment-controller.ts"
+      "src/comment-controller.ts",
+      "src/git-context.ts"
     ],
     "reporter": [
       "text",
