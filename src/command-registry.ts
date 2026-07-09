@@ -17,6 +17,7 @@ import {
   toBranchPrQuickPickItems,
   type DiscoveredPullRequestWithSource,
 } from './branch-pr-picker';
+import { buildMdprUri } from './mdpr-uri';
 
 const COMMAND_IDS = {
   openPR: 'markdownPrReview.openPullRequest',
@@ -49,6 +50,7 @@ export function registerCommands(
             : await promptForPullRequestRef(log);
           if (!targetRef) return;
           await sessionManager.openPullRequest(targetRef);
+          await revealReviewSurface(sessionManager);
           void vscode.window.showInformationMessage(
             `Loaded PR #${targetRef.pullRequestId} from ${targetRef.organization}/${targetRef.project}.`,
           );
@@ -241,6 +243,7 @@ async function openPullRequestForCurrentBranch(
 
   const ref = pullRequestRefFromDiscoveredPr(picked.source);
   await sessionManager.openPullRequest(ref);
+  await revealReviewSurface(sessionManager);
   void vscode.window.showInformationMessage(
     `Loaded PR #${ref.pullRequestId} from ${ref.organization}/${ref.project}.`,
   );
@@ -262,4 +265,33 @@ async function discoverPullRequests(
     }
   }
   return dedupeDiscoveredPullRequests(all);
+}
+
+/**
+ * After a PR is opened, focus the Markdown PR Review activity-bar view and
+ * open the first changed markdown file in the rendered viewer, so the
+ * reviewer lands directly on the review surface. Best-effort: a failure here
+ * never fails the open (the PR is already loaded).
+ */
+async function revealReviewSurface(
+  sessionManager: SessionManager,
+): Promise<void> {
+  try {
+    await vscode.commands.executeCommand(
+      'workbench.view.extension.markdownPrReview',
+    );
+    const session = sessionManager.getActiveSession();
+    const firstMarkdown = session?.files.find((f) => f.isMarkdown);
+    if (session && firstMarkdown) {
+      await vscode.commands.executeCommand(
+        'vscode.openWith',
+        buildMdprUri(session.pr.ref, firstMarkdown.filePath),
+        'markdownPrReview.renderedView',
+      );
+    }
+  } catch (err) {
+    getLogger('CommandRegistry').warn('Failed to reveal the review surface.', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
