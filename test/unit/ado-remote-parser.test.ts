@@ -75,7 +75,7 @@ describe('parseAdoRemoteUrl', () => {
 
     it('returns the raw segment when a component is not valid percent-encoding', () => {
       const result = parseAdoRemoteUrl(
-        'https://dev.azure.com/contoso/MyProj/_git/My%Repo'
+        'https://dev.azure.com/contoso/MyProj/_git/My%Repo',
       );
       if (!result.ok) throw new Error('unreachable');
       expect(result.value.repositoryName).to.equal('My%Repo');
