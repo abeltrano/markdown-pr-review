@@ -25,12 +25,18 @@ import {
 import { getLogger, redactAuthHeaders, type Logger } from './logger';
 import { AdoNetworkError, AdoRestError } from './ado-errors';
 import type {
+  AdoRepoCoordinates,
   ChangedFile,
+  DiscoveredPullRequest,
   LineOffset,
   PullRequest,
   PullRequestRef,
   Thread,
 } from './types';
+import {
+  toDiscoveredPullRequest,
+  type RawGitPullRequest,
+} from './discovered-pr';
 
 // Hard cap on a single ADO REST request before we give up and surface a
 // timeout error. Most calls finish in <2s; this exists so a stalled
@@ -67,6 +73,11 @@ export interface AdoClient {
   createThread(ref: PullRequestRef, input: CreateThreadInput): Promise<Thread>;
   getMergeBaseSha(ref: PullRequestRef): Promise<string>;
   resolveRepositoryId(ref: PullRequestRef): Promise<string>;
+  /** Active PRs whose source branch is `branchName` (REQ-CORE-008). */
+  listActivePullRequestsBySourceBranch(
+    coords: AdoRepoCoordinates,
+    branchName: string,
+  ): Promise<DiscoveredPullRequest[]>;
 }
 
 // Re-export ADO error classes for callers that import from this module.
@@ -253,6 +264,36 @@ export class HttpAdoClient implements AdoClient {
     }
     const latest = iters.value[iters.value.length - 1]!;
     return latest.commonRefCommit?.commitId ?? '';
+  }
+
+  async listActivePullRequestsBySourceBranch(
+    coords: AdoRepoCoordinates,
+    branchName: string,
+  ): Promise<DiscoveredPullRequest[]> {
+    const repoId = await this.resolveRepositoryId({
+      organization: coords.organization,
+      project: coords.project,
+      repositoryId: '',
+      repositoryName: coords.repositoryName,
+      pullRequestId: 0,
+    });
+    // Pass the raw ref string; buildUrl percent-encodes it exactly once
+    // (do NOT pre-encode — that double-encodes slashes to %252F and the
+    // search returns nothing).
+    const url = this.buildUrl(
+      coords.organization,
+      `${encodeURIComponent(coords.project)}/_apis/git/repositories/${repoId}/pullrequests`,
+      {
+        'searchCriteria.sourceRefName': `refs/heads/${branchName}`,
+        'searchCriteria.status': 'active',
+        'api-version': API_VERSION,
+      },
+    );
+    const raw = await this.requestJson<{ value?: RawGitPullRequest[] }>(
+      'GET',
+      url,
+    );
+    return (raw.value ?? []).map(toDiscoveredPullRequest);
   }
 
   async resolveRepositoryId(ref: PullRequestRef): Promise<string> {
