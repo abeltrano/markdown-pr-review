@@ -94,6 +94,9 @@ code --install-extension .\md-pr-review-*.vsix
 2. **Open a PR.** Press `Ctrl+Shift+P` → run **Markdown PR Review:
    Open Pull Request…**. Paste the PR URL, for example
    `https://dev.azure.com/contoso/MyProject/_git/MyRepo/pullrequest/12345`.
+   Or, if the repository is checked out locally, run **Markdown PR
+   Review: Open Pull Request for Current Branch…** to pick from the
+   active PRs whose source branch is the branch you have checked out.
 3. **Pick a markdown file.** The **Markdown PR Review** activity-bar
    view lists all `.md` / `.markdown` / `.mdx` files in the PR. Click
    one to open it in the rendered viewer.
@@ -134,6 +137,7 @@ settings or workspace state.
 | Command                                  | Default key       | Notes                                                            |
 | ---------------------------------------- | ----------------- | ---------------------------------------------------------------- |
 | **Markdown PR Review: Open Pull Request…**    | —                 | Accepts a full PR URL or a bare PR number (see settings below).  |
+| **Markdown PR Review: Open Pull Request for Current Branch…** | — | Discovers active PRs whose source branch is the current git branch and opens the one you pick. |
 | **Markdown PR Review: Refresh Threads**       | `Ctrl+Alt+R`      | Re-fetches threads on the active PR.                             |
 | **Markdown PR Review: Add Comment to Selection** | `Ctrl+Alt+C`   | Focuses the comment input sidebar for the current selection.     |
 | **Markdown PR Review: Refresh to Head Commit**| `F5`              | Re-opens the PR at the latest head commit.                       |

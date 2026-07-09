@@ -243,6 +243,18 @@ a migration plan for the live-restyle feature.
   `markdown.preview` config change.
 - [`src/ado-client.ts`](../src/ado-client.ts) — REST client;
   PR/threads/items endpoints; 401 retry; error classification.
+- Active-branch PR discovery (REQ-CORE-008):
+  [`src/command-registry.ts`](../src/command-registry.ts) hosts the
+  `openPullRequestForCurrentBranch` command, which chains
+  [`src/git-context.ts`](../src/git-context.ts) (current branch +
+  remotes via the built-in `vscode.git` API),
+  [`src/ado-remote-parser.ts`](../src/ado-remote-parser.ts) (remote URL
+  → ADO coordinates), the ADO client's
+  `listActivePullRequestsBySourceBranch`,
+  [`src/discovered-pr.ts`](../src/discovered-pr.ts) (wire →
+  `DiscoveredPullRequest`), and
+  [`src/branch-pr-picker.ts`](../src/branch-pr-picker.ts) (Quick Pick +
+  ref).
 - [`src/views/rendered-view/main.ts`](../src/views/rendered-view/main.ts) —
   webview entry; receives `init`, paints HTML, hosts selection
   handler + popovers + mermaid loader.
