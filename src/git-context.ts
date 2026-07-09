@@ -84,7 +84,9 @@ const INIT_TIMEOUT_MS = 5000;
  * workspace repository. Never throws; every failure mode is a distinct
  * `BranchContext` kind so the caller can surface an actionable message.
  */
-export async function resolveActiveBranchContext(): Promise<BranchContext> {
+export async function resolveActiveBranchContext(
+  preferredRoot?: string,
+): Promise<BranchContext> {
   const log = getLogger('GitContext');
   const api = await acquireGitApi(log);
   if (!api) {
@@ -97,7 +99,7 @@ export async function resolveActiveBranchContext(): Promise<BranchContext> {
     return { kind: 'no-repository' };
   }
 
-  const repo = pickRepository(repos);
+  const repo = pickRepository(repos, preferredRoot);
   if (!repo) {
     return {
       kind: 'ambiguous-repository',
@@ -168,7 +170,16 @@ function waitForInitialized(api: GitApi): Promise<void> {
  * may be a virtual `mdpr://` rendered view (scheme !== 'file'), which belongs
  * to no repository — that falls through to the sole-or-ambiguous branch.
  */
-function pickRepository(repos: GitRepository[]): GitRepository | null {
+function pickRepository(
+  repos: GitRepository[],
+  preferredRoot?: string,
+): GitRepository | null {
+  if (preferredRoot) {
+    const chosen = repos.find((r) => samePath(r.rootUri.fsPath, preferredRoot));
+    if (chosen) {
+      return chosen;
+    }
+  }
   if (repos.length === 1) {
     return repos[0]!;
   }
@@ -182,6 +193,12 @@ function pickRepository(repos: GitRepository[]): GitRepository | null {
     }
   }
   return null;
+}
+
+function samePath(a: string, b: string): boolean {
+  return (
+    a.replace(/\\/g, '/').toLowerCase() === b.replace(/\\/g, '/').toLowerCase()
+  );
 }
 
 function isWithin(root: string, file: string): boolean {
