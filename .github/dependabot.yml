@@ -63,6 +63,13 @@ updates:
         update-types:
           - version-update:semver-minor
           - version-update:semver-major
+      # typescript-eslint (pinned at 8.63.0) caps its typescript peer at
+      # <6.1.0, and no typescript-eslint release supports TypeScript 7
+      # yet, so a major bump breaks `npm ci` with ERESOLVE. Hold on the
+      # 6.x line until typescript-eslint ships TS 7 support, then lift.
+      - dependency-name: "typescript"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
