@@ -195,6 +195,7 @@ as tests are executed.
 | REQ-CORE-005    | AC-1, AC-2, AC-3            | TC-032, TC-033, TC-034                              | Planned |
 | REQ-CORE-006    | AC-1, AC-2, AC-3            | TC-035, TC-036, TC-070                              | Planned |
 | REQ-CORE-007    | AC-1, AC-2, AC-3, AC-4, AC-5 | TC-037, TC-038, TC-039, TC-071, TC-164             | Planned |
+| REQ-CORE-008    | AC-1, AC-2, AC-3, AC-4, AC-5 | TC-006, TC-007, TC-008, TC-009                     | Planned |
 | REQ-COMMENT-001 | AC-1, AC-2, AC-3, AC-4, AC-5 | TC-050, TC-051, TC-072, TC-080                     | Planned |
 | REQ-COMMENT-002 | AC-1, AC-2, AC-3, AC-4, AC-5, AC-6 | TC-052, TC-053, TC-054, TC-055, TC-056, TC-057, TC-058 | Planned |
 | REQ-COMMENT-003 | AC-1, AC-2, AC-3            | TC-016, TC-081, TC-082                              | Planned |
@@ -1047,6 +1048,42 @@ each `mappingMode` enum value MUST have at least one unit test.
 * Expected: zero matches in production source (matches inside test fixtures or comments tagged `// allowed:` are acceptable but justified).
 * Priority: H  · Type: Stc · Level: Stc · Phase: v0.4
 
+### 5.19 Active-Branch PR Discovery (REQ-CORE-008)
+
+**TC-006** — ADO remote-URL parser: canonical `dev.azure.com` remote
+* Requirement(s): REQ-CORE-008 AC-1, CON-002
+* Preconditions: Unit test harness, no live network.
+* Steps:
+  1. Call `parseAdoRemoteUrl` on `https://dev.azure.com/contoso/MyProj/_git/MyRepo`, its `.git`-suffixed form, and the `https://contoso@dev.azure.com/...` userinfo form.
+* Expected: each returns `{ organization: 'contoso', project: 'MyProj', repositoryName: 'MyRepo' }`; a trailing `.git` and a `{org}@` userinfo prefix are stripped.
+* Priority: H  · Type: F  · Level: U  · Phase: v0.5
+
+**TC-007** — ADO remote-URL parser: legacy, SSH, and non-ADO remotes
+* Requirement(s): REQ-CORE-008 AC-1, AC-4, CON-002
+* Preconditions: Unit test harness.
+* Steps:
+  1. Parse `https://contoso.visualstudio.com/MyProj/_git/MyRepo`, the `.../DefaultCollection/MyProj/_git/MyRepo` variant, and `git@ssh.dev.azure.com:v3/contoso/MyProj/MyRepo`.
+  2. Parse a non-ADO remote such as `git@github.com:owner/repo.git`.
+* Expected: the ADO forms normalize to `{ organization: 'contoso', project: 'MyProj', repositoryName: 'MyRepo' }`; the non-ADO remote returns a typed parse error and does not throw.
+* Priority: H  · Type: F  · Level: U  · Phase: v0.5
+
+**TC-008** — Discovered-PR → Quick Pick item and `PullRequestRef` mapping
+* Requirement(s): REQ-CORE-008 AC-2
+* Preconditions: Unit test harness.
+* Steps:
+  1. Map a list of discovered PRs (including one with `isDraft: true`) to Quick Pick items and to `PullRequestRef`s via the pure picker helpers.
+* Expected: each item label reads `#{id} — {title}` (drafts carry a draft marker); each `PullRequestRef` is built from the PR's own `repository.id` / `name` and round-trips through `isPullRequestRef`.
+* Priority: H  · Type: F  · Level: U  · Phase: v0.5
+
+**TC-009** — Active-branch discovery end to end (happy path + edge cases)
+* Requirement(s): REQ-CORE-008 AC-1, AC-2, AC-3, AC-4
+* Preconditions: Extension Development Host signed in to ADO; a branch with one active PR, a branch with several, and a branch with none.
+* Steps:
+  1. On each branch, run `markdownPrReview.openPullRequestForCurrentBranch`.
+  2. Also exercise: not a git repository / Git extension disabled, detached HEAD, and a non-ADO remote.
+* Expected: one match opens after the Quick Pick; several show a Quick Pick; zero shows an informational message noting fork-sourced PRs are excluded; each error state shows a distinct actionable message with no unhandled exception and no secret in the Output channel.
+* Priority: C  · Type: F  · Level: I  · Phase: v0.5
+
 ---
 
 ## 6. Risk-Based Test Prioritization
@@ -1175,3 +1212,4 @@ The project is "validation-complete for personal v1 release" when:
 | Version | Date       | Author                                                                                       | Notes                                                                                                                            |
 | ------- | ---------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | 1.0     | 2026-06-02 | Pipeline stage `author-validation-plan` (PromptKit, persona: `systems-engineer`); consumes `requirements.md` v0.3 + `design.md` v0.2 | Initial validation plan. Full traceability matrix, 90 test cases across 17 component / scenario groups, risk-based prioritisation, four phase gates. |
+| 1.1     | 2026-07-09 | Active-Branch PR Discovery (user sign-off) | Added REQ-CORE-008 traceability row (TC-006…009) and §5.19 defining TC-006…009 (ADO remote-URL parser, discovered-PR → Quick Pick mapping, and end-to-end discovery incl. edge cases). No renumbering of existing test cases. |
