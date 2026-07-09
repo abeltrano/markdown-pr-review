@@ -530,11 +530,11 @@ Legend:
 * Expected: each diff region's first block has a gutter marker (added/removed/modified, distinct colours / icons per `design.md`); markers align with their block.
 * Priority: M  · Type: F  · Level: I  · Phase: v0.3
 
-**TC-044** — Toggle command hides/shows diff annotations
+**TC-044** — New file added in PR: every block annotated `added`
 * Requirement(s): REQ-DIFF-002 AC-2
-* Preconditions: TC-043 result on screen.
-* Steps: run the `adopr.toggleDiffAnnotations` command.
-* Expected: markers disappear (and re-appear on toggling back) within one frame; no full re-render is required.
+* Preconditions: PR whose changed set includes a markdown file that does not exist at the merge-base (newly added in the PR).
+* Steps: open that file in rendered view.
+* Expected: because the file is absent at the merge-base, every rendered block carries `data-diff-state="added"` (green gutter), per REQ-DIFF-002 AC-2.
 * Priority: M  · Type: F  · Level: I  · Phase: v0.3
 
 ### 5.6 Selection Mapper (REQ-COMMENT-002, RISK-001, CON-004, OQ-9)
@@ -823,14 +823,14 @@ each `mappingMode` enum value MUST have at least one unit test.
 * Requirement(s): REQ-UX-002 AC-1
 * Preconditions: Extension installed.
 * Steps: open VS Code Settings; search for "markdownPrReview".
-* Expected: at minimum `markdownPrReview.staleCommitPollSeconds`, `adopr.diffAnnotations.enabled`, `adopr.maxFileSizeMb` (or equivalents declared in `package.json`) appear with descriptions.
+* Expected: `markdownPrReview.defaultOrganization`, `markdownPrReview.defaultProject`, and `markdownPrReview.staleCommitPollSeconds` (as declared in `package.json`) appear with descriptions.
 * Priority: L  · Type: F  · Level: Stc · Phase: v0.3
 
-**TC-124** — Setting changes take effect without reload
+**TC-124** — Bare PR id resolves when a default org and project are configured
 * Requirement(s): REQ-UX-002 AC-2
-* Preconditions: PR open; diff annotations enabled.
-* Steps: toggle `adopr.diffAnnotations.enabled` to `false`.
-* Expected: annotations disappear from open tabs within 1 s; re-enable restores them.
+* Preconditions: `markdownPrReview.defaultOrganization` and `markdownPrReview.defaultProject` are set.
+* Steps: run `markdownPrReview.openPullRequest` and enter a bare numeric PR id (no URL).
+* Expected: the extension resolves the PR from the configured org/project and opens the review session, per REQ-UX-002 AC-2.
 * Priority: M  · Type: F  · Level: I  · Phase: v0.3
 
 **TC-125** — Default keybinding for "Add Comment" works

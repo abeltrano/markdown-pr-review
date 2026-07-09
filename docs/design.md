@@ -104,7 +104,7 @@ flowchart TB
 #### Command Registry
 
 - **Responsibility**: Register VS Code commands and route invocations. (REQ-CORE-001, REQ-UX-001, REQ-UX-003)
-- **Interfaces**: Contributes `markdownPrReview.openPullRequest`, `markdownPrReview.focusRenderedView`, `adoMdReview.focusCommentInput`, `markdownPrReview.refreshThreads`, `markdownPrReview.addComment` (commands). Default keybindings: `openPullRequest` and `addComment` (the latter active only when `adoMdReview.renderedViewFocused`).
+- **Interfaces**: Registers the review commands — including `markdownPrReview.openPullRequest`, `markdownPrReview.refreshThreads`, `markdownPrReview.addComment`, and `markdownPrReview.refreshToHead` — plus the internal `markdownPrReview.focusRenderedView` used by the status-bar click. Default keybindings: `markdownPrReview.addComment` (`ctrl+alt+c`), `markdownPrReview.refreshThreads` (`ctrl+alt+r`), and `markdownPrReview.refreshToHead` (`f5`), each active only while the rendered view is focused (`activeCustomEditorId == 'markdownPrReview.renderedView'`).
 - **Dependencies**: PR URL Parser, Session Manager.
 - **Constraints**: Activation event tied to command invocation (`onCommand:markdownPrReview.openPullRequest`) to keep cold-start cost zero.
 
@@ -206,7 +206,7 @@ These are small functions in `src/renderer/` that hook into `markdown-it`'s publ
 - **Responsibility**: Provide a native sidebar tree of the PR's changed markdown files; selecting a file opens (or focuses) the corresponding `mdpr://` editor tab. (REQ-CORE-006)
 - **Interfaces**: Implements `vscode.TreeDataProvider<FileNode>`. Refreshes via `onDidChangeTreeData` when Session Manager updates the file list or thread counts.
 - **Dependencies**: Session Manager.
-- **Constraints**: TreeView contributes to a custom view container in the activity bar (`markdownPrReview` container) shown only when a session is active (`when: adoMdReview.sessionActive`). Each tree item carries a comment-count badge (REQ-CORE-006 AC-3). Clicking a file invokes `vscode.commands.executeCommand('vscode.openWith', mdprUri, 'markdownPrReview.renderedView')` which routes through the CustomEditorProvider.
+- **Constraints**: TreeView contributes to a custom view container in the activity bar (the `markdownPrReview` container), which is always present; the tree shows a placeholder node until a PR is opened. Each tree item carries a comment-count badge (REQ-CORE-006 AC-3). Clicking a file invokes `vscode.commands.executeCommand('vscode.openWith', mdprUri, 'markdownPrReview.renderedView')` which routes through the CustomEditorProvider.
 
 #### CommentInputView (host side, sidebar `WebviewView`)
 
@@ -474,16 +474,16 @@ Each protocol carries an optional `protocolVersion: number` field on `init` / `r
 
 | Contribution point | Value | REQ |
 |---|---|---|
-| `commands` | `markdownPrReview.openPullRequest`, `markdownPrReview.focusRenderedView`, `adoMdReview.focusCommentInput`, `markdownPrReview.refreshThreads`, `markdownPrReview.addComment` | REQ-CORE-001, REQ-UX-001, REQ-UX-003, REQ-COMMENT-001 AC-4, REQ-COMMENT-005 AC-3 |
-| `keybindings` | `markdownPrReview.openPullRequest` → `ctrl+alt+r` (overridable); `markdownPrReview.addComment` → `ctrl+alt+c` when `adoMdReview.renderedViewFocused` (overridable) | REQ-UX-003 AC-1, REQ-COMMENT-001 AC-4 |
+| `commands` | `markdownPrReview.openPullRequest`, `markdownPrReview.refreshThreads`, `markdownPrReview.addComment`, `markdownPrReview.refreshToHead`, `markdownPrReview.showMarkdownOnly`, `markdownPrReview.showAllFiles`, `markdownPrReview.closeSession`, `markdownPrReview.closePullRequest`, `markdownPrReview.closeAllPullRequests` (the status-bar `markdownPrReview.focusRenderedView` is registered internally, not contributed) | REQ-CORE-001, REQ-UX-001, REQ-UX-003, REQ-COMMENT-001 AC-4, REQ-COMMENT-005 AC-3 |
+| `keybindings` | `markdownPrReview.addComment` → `ctrl+alt+c`; `markdownPrReview.refreshThreads` → `ctrl+alt+r`; `markdownPrReview.refreshToHead` → `f5` — all `when: activeCustomEditorId == 'markdownPrReview.renderedView'` (overridable) | REQ-UX-003 AC-1, REQ-COMMENT-001 AC-4 |
 | `configuration` | `markdownPrReview.defaultOrganization` (string, default `""`), `markdownPrReview.defaultProject` (string, default `""`), `markdownPrReview.staleCommitPollSeconds` (integer, default 30, min 15, max 60) | REQ-UX-002, REQ-ERR-002 AC-3 |
-| `viewsContainers.activitybar` | `markdownPrReview` container with codicon icon (only visible when `adoMdReview.sessionActive`) | REQ-CORE-006, REQ-COMMENT-001 |
-| `views.markdownPrReview` | `markdownPrReview.fileTree` (TreeView), `markdownPrReview.commentInput` (WebviewView) | REQ-CORE-006, REQ-COMMENT-001 AC-5 |
-| `customEditors` | `markdownPrReview.renderedView` for scheme `mdpr` (priority `default`, `displayName: "ADO PR Markdown"`) | REQ-CORE-001 AC-2, REQ-CORE-005 |
-| `activationEvents` | `onCommand:markdownPrReview.openPullRequest`, `onCustomEditor:markdownPrReview.renderedView`, `onView:markdownPrReview.fileTree`, `onView:markdownPrReview.commentInput`, `onUri` (for `vscode://...` deep links to PRs, future) | NFR-PERF-001 (zero cold-start) |
+| `viewsContainers.activitybar` | `markdownPrReview` container with an activity-bar icon (always present) | REQ-CORE-006, REQ-COMMENT-001 |
+| `views.markdownPrReview` | `markdownPrReview.fileTree` (TreeView), `markdownPrReview.recentPullRequests` (TreeView), `markdownPrReview.commentInput` (WebviewView) | REQ-CORE-006, REQ-COMMENT-001 AC-5 |
+| `customEditors` | `markdownPrReview.renderedView` (priority `option`, `displayName: "Markdown PR Review"`), selecting `*.md` / `*.markdown` / `*.mdx` | REQ-CORE-001 AC-2, REQ-CORE-005 |
+| `activationEvents` | `onCommand:markdownPrReview.openPullRequest`, `onView:markdownPrReview.fileTree`, `onView:markdownPrReview.recentPullRequests`, `onView:markdownPrReview.commentInput`, `onCustomEditor:markdownPrReview.renderedView` | NFR-PERF-001 (zero cold-start) |
 | `engines.vscode` | `^1.85.0` | REQ-NFR-COMPAT-001 AC-1 |
 
-The `when` clauses `adoMdReview.sessionActive` and `adoMdReview.renderedViewFocused` are set via `vscode.commands.executeCommand('setContext', ...)` by Session Manager and CustomEditorProvider respectively.
+Menu and keybinding `when` clauses use VS Code's built-in `activeCustomEditorId == 'markdownPrReview.renderedView'` context for rendered-view-focused actions, plus the `markdownPrReview.markdownOnly` context key set via `vscode.commands.executeCommand('setContext', ...)` by the FileTreeView to toggle the markdown-only filter.
 
 ### 4.2 Data Model
 
