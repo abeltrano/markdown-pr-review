@@ -12,6 +12,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [git-cliff]: https://git-cliff.org
 
 
+## [0.6.0] - 2026-07-09
+
+### 🚀 Features
+
+- Discover and open the PR for the current branch (REQ-CORE-008) ([#76](https://github.com/abeltrano/markdown-pr-review/pull/76))
+
+### 🐛 Bug Fixes
+
+- *(deps)* Clear dev-scope undici + form-data security advisories ([#67](https://github.com/abeltrano/markdown-pr-review/pull/67))
+- *(deps)* Pin @types/vscode to engines.vscode floor to unblock vsce package ([#69](https://github.com/abeltrano/markdown-pr-review/pull/69))
+
+### 📚 Documentation
+
+- Refocus extension details page on the problem it solves ([#70](https://github.com/abeltrano/markdown-pr-review/pull/70))
+- Align spec docs with the shipped implementation ([#75](https://github.com/abeltrano/markdown-pr-review/pull/75))
+
+### 🧪 Testing
+
+- De-flake ReDoS bounded-time guard (fixes red main after 0.5.0) ([#66](https://github.com/abeltrano/markdown-pr-review/pull/66))
+
+### 🎨 Styling
+
+- Adopt Prettier and standardize on 2-space indentation ([#74](https://github.com/abeltrano/markdown-pr-review/pull/74))
+
+### ⚙️ CI
+
+- *(deps)* Bump the actions group across 1 directory with 2 updates ([#58](https://github.com/abeltrano/markdown-pr-review/pull/58))
+- Standardize on Node 24 (.nvmrc + engines + workflows) ([#68](https://github.com/abeltrano/markdown-pr-review/pull/68))
+- *(dependabot)* Ignore typescript major bumps until typescript-eslint supports TS 7 ([#73](https://github.com/abeltrano/markdown-pr-review/pull/73))
+
+### 📦 Dependencies
+
+- *(deps-dev)* Bump @types/node from 25.9.2 to 26.1.0 in the types group across 1 directory ([#45](https://github.com/abeltrano/markdown-pr-review/pull/45))
+- *(deps-dev)* Bump the eslint group across 1 directory with 2 updates ([#46](https://github.com/abeltrano/markdown-pr-review/pull/46))
+- *(deps-dev)* Bump @types/vscode from 1.120.0 to 1.125.0 in the vscode group across 1 directory ([#52](https://github.com/abeltrano/markdown-pr-review/pull/52))
+- *(deps)* Bump the npm-minor-patch group across 1 directory with 4 updates ([#59](https://github.com/abeltrano/markdown-pr-review/pull/59))
+- *(deps-dev)* Bump tsx from 4.22.4 to 4.23.0 in the typescript group across 1 directory ([#63](https://github.com/abeltrano/markdown-pr-review/pull/63))
+- *(deps-dev)* Bump @types/node from 26.1.0 to 26.1.1 in the types group ([#71](https://github.com/abeltrano/markdown-pr-review/pull/71))
+
 ## [0.5.0] - 2026-07-07
 
 ### 🚀 Features
