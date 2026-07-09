@@ -20,25 +20,27 @@ import { getLogger } from '../logger';
 import type { SessionManager } from '../session-manager';
 
 export class MdprContentProvider implements vscode.TextDocumentContentProvider {
- private readonly log = getLogger('MdprContentProvider');
+  private readonly log = getLogger('MdprContentProvider');
 
- constructor(private readonly sessionManager: SessionManager) {}
+  constructor(private readonly sessionManager: SessionManager) {}
 
- provideTextDocumentContent(uri: vscode.Uri): string {
-  const session = this.sessionManager.getSessionForUri(uri.toString());
-  if (!session) {
-   this.log.warn('provideTextDocumentContent: no session for uri', { uri: uri.toString() });
-   return '';
+  provideTextDocumentContent(uri: vscode.Uri): string {
+    const session = this.sessionManager.getSessionForUri(uri.toString());
+    if (!session) {
+      this.log.warn('provideTextDocumentContent: no session for uri', {
+        uri: uri.toString(),
+      });
+      return '';
+    }
+    try {
+      const { filePath } = parseMdprUri(uri);
+      return session.fileContentCache.get(filePath) ?? '';
+    } catch (err) {
+      this.log.warn('provideTextDocumentContent: failed to parse URI', {
+        uri: uri.toString(),
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return '';
+    }
   }
-  try {
-   const { filePath } = parseMdprUri(uri);
-   return session.fileContentCache.get(filePath) ?? '';
-  } catch (err) {
-   this.log.warn('provideTextDocumentContent: failed to parse URI', {
-    uri: uri.toString(),
-    error: err instanceof Error ? err.message : String(err)
-   });
-   return '';
-  }
- }
 }

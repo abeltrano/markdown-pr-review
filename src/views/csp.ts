@@ -13,14 +13,15 @@ import { webcrypto as nodeWebcrypto } from 'node:crypto';
  * safety fallback for hosts where globalThis.crypto is not yet wired.
  */
 export function generateNonce(): string {
- const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
- const bytes = new Uint8Array(32);
- (globalThis.crypto ?? nodeWebcrypto).getRandomValues(bytes);
- let out = '';
- for (const b of bytes) {
-  out += chars[b % chars.length];
- }
- return out;
+  const chars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(32);
+  (globalThis.crypto ?? nodeWebcrypto).getRandomValues(bytes);
+  let out = '';
+  for (const b of bytes) {
+    out += chars[b % chars.length];
+  }
+  return out;
 }
 
 /**
@@ -36,22 +37,22 @@ export function generateNonce(): string {
  * script-src remains strict (nonce-only).
  */
 export function buildRenderedViewCsp(opts: {
- nonce: string;
- webview: vscode.Webview;
+  nonce: string;
+  webview: vscode.Webview;
 }): string {
- const src = opts.webview.cspSource;
- // https: is permitted in style-src and font-src so user-configured
- // `markdown.styles` entries that point at HTTPS URLs (or that
- // @font-face web fonts) load correctly. Local file:// styles are
- // already covered by ${src} via the webview's resource scheme.
- return [
-  `default-src 'none'`,
-  `img-src ${src} https: data:`,
-  `script-src 'nonce-${opts.nonce}' ${src}`,
-  `style-src ${src} 'unsafe-inline' https:`,
-  `font-src ${src} https: data:`,
-  `connect-src 'none'`
- ].join('; ');
+  const src = opts.webview.cspSource;
+  // https: is permitted in style-src and font-src so user-configured
+  // `markdown.styles` entries that point at HTTPS URLs (or that
+  // @font-face web fonts) load correctly. Local file:// styles are
+  // already covered by ${src} via the webview's resource scheme.
+  return [
+    `default-src 'none'`,
+    `img-src ${src} https: data:`,
+    `script-src 'nonce-${opts.nonce}' ${src}`,
+    `style-src ${src} 'unsafe-inline' https:`,
+    `font-src ${src} https: data:`,
+    `connect-src 'none'`,
+  ].join('; ');
 }
 
 /**
@@ -59,16 +60,16 @@ export function buildRenderedViewCsp(opts: {
  * mermaid is never loaded here.
  */
 export function buildCommentInputCsp(opts: {
- nonce: string;
- webview: vscode.Webview;
+  nonce: string;
+  webview: vscode.Webview;
 }): string {
- const src = opts.webview.cspSource;
- return [
-  `default-src 'none'`,
-  `img-src ${src} data:`,
-  `script-src 'nonce-${opts.nonce}' ${src}`,
-  `style-src ${src}`,
-  `font-src ${src}`,
-  `connect-src 'none'`
- ].join('; ');
+  const src = opts.webview.cspSource;
+  return [
+    `default-src 'none'`,
+    `img-src ${src} data:`,
+    `script-src 'nonce-${opts.nonce}' ${src}`,
+    `style-src ${src}`,
+    `font-src ${src}`,
+    `connect-src 'none'`,
+  ].join('; ');
 }

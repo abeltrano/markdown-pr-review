@@ -11,7 +11,7 @@ This file is a thin pointer scoped to JSON/JSONC files via the
 ## At a glance
 
 - **2-space** indent (the minimum sensible). Spaces only, never
-  tabs.
+  tabs. Enforced by **Prettier** (`npm run format`).
 - LF, UTF-8 (no BOM), trailing newline, no trailing whitespace.
 - Double quotes for all strings and keys (single quotes are
   invalid in JSON; keep them out of JSONC too for consistency).

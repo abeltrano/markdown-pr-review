@@ -9,7 +9,7 @@ let mermaidModule: typeof import('mermaid') | undefined;
 let mermaidConfigured = false;
 
 export interface MermaidLoaderOptions {
- onError: (msg: string) => void;
+  onError: (msg: string) => void;
 }
 
 // State machine for a mermaid container:
@@ -23,79 +23,76 @@ export interface MermaidLoaderOptions {
 // don't double-render and a failed diagram doesn't get retried in a loop.
 type MermaidState = 'pending' | 'rendering' | 'rendered' | 'error';
 function setState(el: HTMLElement, state: MermaidState): void {
- el.dataset.mermaidState = state;
+  el.dataset.mermaidState = state;
 }
 
 export async function initMermaid(opts: MermaidLoaderOptions): Promise<void> {
- try {
-  const containers = document.querySelectorAll<HTMLElement>('div.mermaid');
-  if (containers.length === 0) {
-   return;
-  }
-  const fresh: HTMLElement[] = [];
-  for (const c of Array.from(containers)) {
-   if (c.dataset.mermaidSource === undefined) continue;
-   if (c.dataset.mermaidState === 'pending') fresh.push(c);
-  }
-  if (fresh.length === 0) return;
-  if (!mermaidModule) {
-   mermaidModule = await import('mermaid');
-  }
-  const mermaid = mermaidModule.default;
-  if (!mermaidConfigured) {
-   mermaid.initialize({
-    startOnLoad: false,
-    theme: pickMermaidTheme(),
-    securityLevel: 'strict',
-    htmlLabels: false,
-    flowchart: { htmlLabels: false }
-   });
-   mermaidConfigured = true;
-  }
-  for (let i = 0; i < fresh.length; i++) {
-   const container = fresh[i]!;
-   // The source is URI-encoded by the host fence rule (see
-   // mermaid-fence-rule.ts). URI encoding is required because
-   // DOMPurify — applied to the full rendered HTML on the webview
-   // side as defense-in-depth — strips data-* attributes whose
-   // decoded value contains raw newlines or `<` / `>` characters,
-   // which a multi-line mermaid source typically does. URI-encoding
-   // produces a purely URI-safe ASCII payload that round-trips
-   // cleanly through DOMPurify and the HTML parser.
-   const encoded = container.dataset.mermaidSource ?? '';
-   let source: string;
-   try {
-    source = decodeURIComponent(encoded);
-   } catch {
-    // Malformed %-sequence — fall back to the raw value so the
-    // diagram fails inside mermaid with an explanatory error
-    // instead of disappearing.
-    source = encoded;
-   }
-   setState(container, 'rendering');
-   try {
-    const id = `mermaid-${i}-${Date.now().toString(36)}`;
-    const { svg } = await mermaid.render(id, source);
-    container.innerHTML = sanitizeSvg(svg);
-    setState(container, 'rendered');
-   } catch (err) {
-    container.innerHTML =
-     `<div class="mermaid-error">⚠ Mermaid render failed: ` +
-     `${escapeHtml(String(err))}</div>`;
-    setState(container, 'error');
+  try {
+    const containers = document.querySelectorAll<HTMLElement>('div.mermaid');
+    if (containers.length === 0) {
+      return;
+    }
+    const fresh: HTMLElement[] = [];
+    for (const c of Array.from(containers)) {
+      if (c.dataset.mermaidSource === undefined) continue;
+      if (c.dataset.mermaidState === 'pending') fresh.push(c);
+    }
+    if (fresh.length === 0) return;
+    if (!mermaidModule) {
+      mermaidModule = await import('mermaid');
+    }
+    const mermaid = mermaidModule.default;
+    if (!mermaidConfigured) {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: pickMermaidTheme(),
+        securityLevel: 'strict',
+        htmlLabels: false,
+        flowchart: { htmlLabels: false },
+      });
+      mermaidConfigured = true;
+    }
+    for (let i = 0; i < fresh.length; i++) {
+      const container = fresh[i]!;
+      // The source is URI-encoded by the host fence rule (see
+      // mermaid-fence-rule.ts). URI encoding is required because
+      // DOMPurify — applied to the full rendered HTML on the webview
+      // side as defense-in-depth — strips data-* attributes whose
+      // decoded value contains raw newlines or `<` / `>` characters,
+      // which a multi-line mermaid source typically does. URI-encoding
+      // produces a purely URI-safe ASCII payload that round-trips
+      // cleanly through DOMPurify and the HTML parser.
+      const encoded = container.dataset.mermaidSource ?? '';
+      let source: string;
+      try {
+        source = decodeURIComponent(encoded);
+      } catch {
+        // Malformed %-sequence — fall back to the raw value so the
+        // diagram fails inside mermaid with an explanatory error
+        // instead of disappearing.
+        source = encoded;
+      }
+      setState(container, 'rendering');
+      try {
+        const id = `mermaid-${i}-${Date.now().toString(36)}`;
+        const { svg } = await mermaid.render(id, source);
+        container.innerHTML = sanitizeSvg(svg);
+        setState(container, 'rendered');
+      } catch (err) {
+        container.innerHTML =
+          `<div class="mermaid-error">⚠ Mermaid render failed: ` +
+          `${escapeHtml(String(err))}</div>`;
+        setState(container, 'error');
+        opts.onError(String(err));
+      }
+    }
+  } catch (err) {
     opts.onError(String(err));
-   }
   }
- } catch (err) {
-  opts.onError(String(err));
- }
 }
 
 function escapeHtml(s: string): string {
- return s
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // Pick a mermaid built-in theme that approximately matches the current
@@ -107,12 +104,14 @@ function escapeHtml(s: string): string {
 // supports being called only once per page, so subsequent theme
 // switches require a window reload.
 function pickMermaidTheme(): 'default' | 'dark' | 'neutral' {
- const body = document.body;
- if (!body) return 'default';
- if (body.classList.contains('vscode-high-contrast') &&
-     !body.classList.contains('vscode-high-contrast-light')) {
-  return 'dark';
- }
- if (body.classList.contains('vscode-dark')) return 'dark';
- return 'default';
+  const body = document.body;
+  if (!body) return 'default';
+  if (
+    body.classList.contains('vscode-high-contrast') &&
+    !body.classList.contains('vscode-high-contrast-light')
+  ) {
+    return 'dark';
+  }
+  if (body.classList.contains('vscode-dark')) return 'dark';
+  return 'default';
 }

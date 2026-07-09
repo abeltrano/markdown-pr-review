@@ -17,14 +17,14 @@ import DOMPurify, { type Config } from 'dompurify';
 // here as defense-in-depth even though DOMPurify allows `data-*` by
 // default (ALLOW_DATA_ATTR=true).
 const HTML_CONFIG: Config = {
- ADD_TAGS: ['use'],
- ADD_ATTR: [
-  'target',
-  'data-source-line-start',
-  'data-source-line-end',
-  'data-mermaid-source',
-  'data-mermaid-state'
- ]
+  ADD_TAGS: ['use'],
+  ADD_ATTR: [
+    'target',
+    'data-source-line-start',
+    'data-source-line-end',
+    'data-mermaid-source',
+    'data-mermaid-state',
+  ],
 };
 
 // Mermaid output is well-formed SVG. We allow the SVG + svgFilters
@@ -45,17 +45,24 @@ const HTML_CONFIG: Config = {
 // because it is in FORBID_TAGS — stripping the tag also strips its
 // contents — so this does not loosen the script-injection defense.
 const SVG_CONFIG: Config = {
- USE_PROFILES: { html: true, svg: true, svgFilters: true },
- ADD_TAGS: ['foreignObject'],
- FORBID_TAGS: ['script'],
- FORBID_ATTR: ['onload', 'onclick', 'onerror', 'onmouseover', 'onfocus', 'onblur'],
- FORBID_CONTENTS: []
+  USE_PROFILES: { html: true, svg: true, svgFilters: true },
+  ADD_TAGS: ['foreignObject'],
+  FORBID_TAGS: ['script'],
+  FORBID_ATTR: [
+    'onload',
+    'onclick',
+    'onerror',
+    'onmouseover',
+    'onfocus',
+    'onblur',
+  ],
+  FORBID_CONTENTS: [],
 };
 
 export function sanitizeHtml(html: string): string {
- return DOMPurify.sanitize(html, HTML_CONFIG);
+  return DOMPurify.sanitize(html, HTML_CONFIG);
 }
 
 export function sanitizeSvg(svg: string): string {
- return DOMPurify.sanitize(svg, SVG_CONFIG);
+  return DOMPurify.sanitize(svg, SVG_CONFIG);
 }

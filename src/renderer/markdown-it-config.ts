@@ -17,18 +17,18 @@ import { applyMermaidFenceRule } from './mermaid-fence-rule';
 import { applyMermaidColonFenceRule } from './mermaid-colon-fence-rule';
 
 export function createMarkdownIt(): MarkdownIt {
- const md = new MarkdownIt({
-  html: false,
-  linkify: true,
-  breaks: false
- });
- // Block parser: recognise ADO's `:::mermaid ... :::` form and emit a
- // synthetic `fence` token so the renderer-side rules below treat it
- // identically to ``` ```mermaid ```. Must run before the renderer
- // wrappers are installed (registration order on `md.block.ruler` is
- // independent, but we keep this here for readability of the pipeline).
- applyMermaidColonFenceRule(md);
- applyMermaidFenceRule(md);
- applySourceLineAttributes(md);
- return md;
+  const md = new MarkdownIt({
+    html: false,
+    linkify: true,
+    breaks: false,
+  });
+  // Block parser: recognise ADO's `:::mermaid ... :::` form and emit a
+  // synthetic `fence` token so the renderer-side rules below treat it
+  // identically to ``` ```mermaid ```. Must run before the renderer
+  // wrappers are installed (registration order on `md.block.ruler` is
+  // independent, but we keep this here for readability of the pipeline).
+  applyMermaidColonFenceRule(md);
+  applyMermaidFenceRule(md);
+  applySourceLineAttributes(md);
+  return md;
 }

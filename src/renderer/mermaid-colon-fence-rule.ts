@@ -45,68 +45,71 @@ const OPEN_MARKER = ':::mermaid';
 const CLOSE_MARKER_RE = /^:::\s*$/;
 
 export function applyMermaidColonFenceRule(md: MarkdownIt): void {
- md.block.ruler.before(
-  'fence',
-  'mermaid_colon_fence',
-  (state, startLine, endLine, silent) => {
-   if (state.sCount[startLine]! - state.blkIndent >= 4) {
-    return false;
-   }
+  md.block.ruler.before(
+    'fence',
+    'mermaid_colon_fence',
+    (state, startLine, endLine, silent) => {
+      if (state.sCount[startLine]! - state.blkIndent >= 4) {
+        return false;
+      }
 
-   const startPos = state.bMarks[startLine]! + state.tShift[startLine]!;
-   const maxPos = state.eMarks[startLine]!;
-   const firstLine = state.src.slice(startPos, maxPos);
+      const startPos = state.bMarks[startLine]! + state.tShift[startLine]!;
+      const maxPos = state.eMarks[startLine]!;
+      const firstLine = state.src.slice(startPos, maxPos);
 
-   if (firstLine.length < OPEN_MARKER.length) {
-    return false;
-   }
-   if (firstLine.slice(0, OPEN_MARKER.length).toLowerCase() !== OPEN_MARKER) {
-    return false;
-   }
-   const tail = firstLine.slice(OPEN_MARKER.length);
-   if (tail.length > 0 && /\S/.test(tail)) {
-    return false;
-   }
+      if (firstLine.length < OPEN_MARKER.length) {
+        return false;
+      }
+      if (
+        firstLine.slice(0, OPEN_MARKER.length).toLowerCase() !== OPEN_MARKER
+      ) {
+        return false;
+      }
+      const tail = firstLine.slice(OPEN_MARKER.length);
+      if (tail.length > 0 && /\S/.test(tail)) {
+        return false;
+      }
 
-   if (silent) {
-    return true;
-   }
+      if (silent) {
+        return true;
+      }
 
-   let nextLine = startLine;
-   let foundClose = false;
-   while (++nextLine < endLine) {
-    if (state.sCount[nextLine]! - state.blkIndent >= 4) {
-     continue;
-    }
-    const lineStart = state.bMarks[nextLine]! + state.tShift[nextLine]!;
-    const lineEnd = state.eMarks[nextLine]!;
-    const candidate = state.src.slice(lineStart, lineEnd);
-    if (CLOSE_MARKER_RE.test(candidate)) {
-     foundClose = true;
-     break;
-    }
-   }
+      let nextLine = startLine;
+      let foundClose = false;
+      while (++nextLine < endLine) {
+        if (state.sCount[nextLine]! - state.blkIndent >= 4) {
+          continue;
+        }
+        const lineStart = state.bMarks[nextLine]! + state.tShift[nextLine]!;
+        const lineEnd = state.eMarks[nextLine]!;
+        const candidate = state.src.slice(lineStart, lineEnd);
+        if (CLOSE_MARKER_RE.test(candidate)) {
+          foundClose = true;
+          break;
+        }
+      }
 
-   const firstContentLine = startLine + 1;
-   const lastContentLineExclusive = nextLine;
-   const content = firstContentLine < lastContentLineExclusive
-    ? state.getLines(
-     firstContentLine,
-     lastContentLineExclusive,
-     state.sCount[startLine]!,
-     true
-    )
-    : '';
+      const firstContentLine = startLine + 1;
+      const lastContentLineExclusive = nextLine;
+      const content =
+        firstContentLine < lastContentLineExclusive
+          ? state.getLines(
+              firstContentLine,
+              lastContentLineExclusive,
+              state.sCount[startLine]!,
+              true,
+            )
+          : '';
 
-   const token = state.push('fence', 'code', 0);
-   token.info = 'mermaid';
-   token.content = content;
-   token.markup = ':::';
-   token.map = [startLine, foundClose ? nextLine + 1 : nextLine];
+      const token = state.push('fence', 'code', 0);
+      token.info = 'mermaid';
+      token.content = content;
+      token.markup = ':::';
+      token.map = [startLine, foundClose ? nextLine + 1 : nextLine];
 
-   state.line = foundClose ? nextLine + 1 : nextLine;
-   return true;
-  },
-  { alt: ['paragraph', 'reference', 'blockquote', 'list'] }
- );
+      state.line = foundClose ? nextLine + 1 : nextLine;
+      return true;
+    },
+    { alt: ['paragraph', 'reference', 'blockquote', 'list'] },
+  );
 }

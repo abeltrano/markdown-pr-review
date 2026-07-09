@@ -21,14 +21,14 @@
 //      character class the match would never re-distribute characters
 //      across segments anyway, so this preserves the original semantics.
 export const JWT_LIKE_REGEX =
- /eyJ(?=([A-Za-z0-9_-]{1,8192}))\1\.(?=([A-Za-z0-9_-]{1,8192}))\2\.(?=([A-Za-z0-9_-]{1,8192}))\3/g;
+  /eyJ(?=([A-Za-z0-9_-]{1,8192}))\1\.(?=([A-Za-z0-9_-]{1,8192}))\2\.(?=([A-Za-z0-9_-]{1,8192}))\3/g;
 
 // Header names recognized as auth carriers.
 export const AUTH_HEADER_NAMES = new Set<string>([
- 'authorization',
- 'x-tfs-fedauthredirect',
- 'cookie',
- 'set-cookie'
+  'authorization',
+  'x-tfs-fedauthredirect',
+  'cookie',
+  'set-cookie',
 ]);
 
 // Sentinel inserted for redacted values.
@@ -42,28 +42,28 @@ export const REDACTED = '[REDACTED]';
  * Exported for unit testing (TC-145).
  */
 export function redactAuthHeaders(input: unknown): unknown {
- if (typeof input === 'string') {
-  return redactJwtsAndUrlTokens(input);
- }
- if (Array.isArray(input)) {
-  return input.map(redactAuthHeaders);
- }
- if (input && typeof input === 'object') {
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(
-   input as Record<string, unknown>
-  )) {
-   if (AUTH_HEADER_NAMES.has(key.toLowerCase())) {
-    out[key] = REDACTED;
-   } else if (typeof value === 'string') {
-    out[key] = redactJwtsAndUrlTokens(value);
-   } else {
-    out[key] = redactAuthHeaders(value);
-   }
+  if (typeof input === 'string') {
+    return redactJwtsAndUrlTokens(input);
   }
-  return out;
- }
- return input;
+  if (Array.isArray(input)) {
+    return input.map(redactAuthHeaders);
+  }
+  if (input && typeof input === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(
+      input as Record<string, unknown>,
+    )) {
+      if (AUTH_HEADER_NAMES.has(key.toLowerCase())) {
+        out[key] = REDACTED;
+      } else if (typeof value === 'string') {
+        out[key] = redactJwtsAndUrlTokens(value);
+      } else {
+        out[key] = redactAuthHeaders(value);
+      }
+    }
+    return out;
+  }
+  return input;
 }
 
 /**
@@ -71,11 +71,11 @@ export function redactAuthHeaders(input: unknown): unknown {
  * parameter values from a string.
  */
 export function redactJwtsAndUrlTokens(s: string): string {
- let out = s.replace(JWT_LIKE_REGEX, REDACTED);
- // Sensitive query-string values. Match both raw and percent-encoded "=".
- out = out.replace(
-  /\b(access_token|code|id_token|refresh_token|client_secret|api-key|api_key)=([^&\s"'>]+)/gi,
-  (_match, name) => `${name}=${REDACTED}`
- );
- return out;
+  let out = s.replace(JWT_LIKE_REGEX, REDACTED);
+  // Sensitive query-string values. Match both raw and percent-encoded "=".
+  out = out.replace(
+    /\b(access_token|code|id_token|refresh_token|client_secret|api-key|api_key)=([^&\s"'>]+)/gi,
+    (_match, name) => `${name}=${REDACTED}`,
+  );
+  return out;
 }
