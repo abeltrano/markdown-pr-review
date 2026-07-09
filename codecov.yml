@@ -1,0 +1,27 @@
+# Codecov configuration.
+#
+# The hard coverage gate for this repo is the `coverage` job in CI,
+# which runs `c8 mocha` and fails on the thresholds declared in the
+# `c8` block of package.json (93% lines/statements, 95% functions,
+# 80% branches). That job enforces absolute coverage on every PR.
+#
+# The Codecov statuses below are supplementary. They must not fail CI
+# on trivial deltas — for example a formatting-only change (Prettier
+# reflow) that shifts line counts without changing tested behavior.
+# The project status therefore tolerates a small drop, and the patch
+# status is informational (reported, non-blocking) because per-diff
+# coverage is noisy for large formatting or refactor PRs that touch
+# nearly every line.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        informational: true
+
+# Codecov only ever sees the files c8 emits to lcov (the unit-testable
+# surface); the VS Code-bound modules excluded in package.json's `c8`
+# block never reach the report, so no extra `ignore` list is needed.
