@@ -16,6 +16,7 @@ friends. Standalone `.css` files are limited to vendor assets in
 ## At a glance
 
 - 2-space indent, LF, trailing newline, no trailing whitespace.
+  Enforced by **Prettier** (`npm run format`).
 - One selector per line in a selector list; opening `{` on the
   same line as the last selector; one declaration per line;
   closing `}` on its own line.

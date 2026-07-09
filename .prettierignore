@@ -1,0 +1,18 @@
+# Generated or vendored output — never format.
+node_modules/
+out/
+coverage/
+package-lock.json
+*.vsix
+
+# Binary assets.
+media/
+
+# Markdown and YAML keep their own conventions (hard-line-break
+# trailing spaces, markdownlint rules, workflow formatting) and are
+# linted separately — leave them to their existing tooling.
+*.md
+*.markdown
+*.mdx
+*.yml
+*.yaml

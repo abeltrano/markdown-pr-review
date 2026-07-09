@@ -9,172 +9,182 @@
 // The webview NEVER calls markdown-it. All rendering happens in the host.
 
 import type {
- HostToRenderedView,
- RenderedViewInitPayload,
- RenderedViewToHost,
- RestylePayload,
- Thread
+  HostToRenderedView,
+  RenderedViewInitPayload,
+  RenderedViewToHost,
+  RestylePayload,
+  Thread,
 } from '../../types';
 import { initMermaid } from './mermaid-loader';
 import { sanitizeHtml } from './sanitize';
 import { attachSelectionHandlers, captureSelection } from './selection-handler';
-import { mountThreadMarkers, refreshThreadMarkers } from './selection-highlight';
+import {
+  mountThreadMarkers,
+  refreshThreadMarkers,
+} from './selection-highlight';
 
 declare function acquireVsCodeApi(): {
- postMessage: (msg: RenderedViewToHost) => void;
- setState: (state: unknown) => void;
- getState: () => unknown;
+  postMessage: (msg: RenderedViewToHost) => void;
+  setState: (state: unknown) => void;
+  getState: () => unknown;
 };
 
 const vscode = acquireVsCodeApi();
 
 interface ViewState {
- init: RenderedViewInitPayload | null;
- threads: Thread[];
+  init: RenderedViewInitPayload | null;
+  threads: Thread[];
 }
 
 const state: ViewState = { init: null, threads: [] };
 
 function post(message: RenderedViewToHost): void {
- vscode.postMessage(message);
+  vscode.postMessage(message);
 }
 
-function log(level: 'info' | 'warn' | 'error', message: string, context?: unknown): void {
- post({ type: 'log', payload: { level, message, context } });
+function log(
+  level: 'info' | 'warn' | 'error',
+  message: string,
+  context?: unknown,
+): void {
+  post({ type: 'log', payload: { level, message, context } });
 }
 
-window.addEventListener('message', (event: MessageEvent<HostToRenderedView>) => {
- const msg = event.data;
- try {
-  switch (msg.type) {
-   case 'init':
-    onInit(msg.payload);
-    break;
-   case 'diffApplied':
-    onDiffApplied(msg.payload);
-    break;
-   case 'threadCreated':
-    state.threads.push(msg.payload.thread);
-    refreshThreadMarkers(state.threads);
-    break;
-   case 'threadsRefreshed':
-    state.threads = msg.payload.threads;
-    refreshThreadMarkers(state.threads);
-    break;
-   case 'selectionCleared':
-    clearSelection();
-    break;
-   case 'staleCommit':
-    showStaleBanner(msg.payload.newSha, msg.payload.oldSha);
-    break;
-   case 'restyle':
-    onRestyle(msg.payload);
-    break;
-   case 'error':
-    showError(msg.payload.code, msg.payload.message);
-    break;
-   default:
-    log('warn', 'Unknown host message', msg);
-  }
- } catch (err) {
-  log('error', 'Failed to handle host message', String(err));
- }
-});
+window.addEventListener(
+  'message',
+  (event: MessageEvent<HostToRenderedView>) => {
+    const msg = event.data;
+    try {
+      switch (msg.type) {
+        case 'init':
+          onInit(msg.payload);
+          break;
+        case 'diffApplied':
+          onDiffApplied(msg.payload);
+          break;
+        case 'threadCreated':
+          state.threads.push(msg.payload.thread);
+          refreshThreadMarkers(state.threads);
+          break;
+        case 'threadsRefreshed':
+          state.threads = msg.payload.threads;
+          refreshThreadMarkers(state.threads);
+          break;
+        case 'selectionCleared':
+          clearSelection();
+          break;
+        case 'staleCommit':
+          showStaleBanner(msg.payload.newSha, msg.payload.oldSha);
+          break;
+        case 'restyle':
+          onRestyle(msg.payload);
+          break;
+        case 'error':
+          showError(msg.payload.code, msg.payload.message);
+          break;
+        default:
+          log('warn', 'Unknown host message', msg);
+      }
+    } catch (err) {
+      log('error', 'Failed to handle host message', String(err));
+    }
+  },
+);
 
 function onDiffApplied(payload: {
- html: string;
- sourceMap: Record<string, [number, number]>;
- diffAnnotations: unknown[];
+  html: string;
+  sourceMap: Record<string, [number, number]>;
+  diffAnnotations: unknown[];
 }): void {
- const article = document.getElementById('content') as HTMLElement | null;
- if (!article) return;
- article.innerHTML = sanitizeHtml(payload.html);
- if (state.init) {
-  state.init.fileContent.html = payload.html;
-  state.init.fileContent.sourceMap = payload.sourceMap;
-  // diffAnnotations is unused by the renderer post-init, but keep the
-  // state object internally consistent in case future code reads it.
-  (state.init as { diffAnnotations: unknown[] }).diffAnnotations =
-   payload.diffAnnotations;
- }
- mountThreadMarkers(state.threads, article);
- void initMermaid({
-  onError: (msg) => log('warn', 'Mermaid render failure', msg)
- });
+  const article = document.getElementById('content') as HTMLElement | null;
+  if (!article) return;
+  article.innerHTML = sanitizeHtml(payload.html);
+  if (state.init) {
+    state.init.fileContent.html = payload.html;
+    state.init.fileContent.sourceMap = payload.sourceMap;
+    // diffAnnotations is unused by the renderer post-init, but keep the
+    // state object internally consistent in case future code reads it.
+    (state.init as { diffAnnotations: unknown[] }).diffAnnotations =
+      payload.diffAnnotations;
+  }
+  mountThreadMarkers(state.threads, article);
+  void initMermaid({
+    onError: (msg) => log('warn', 'Mermaid render failure', msg),
+  });
 }
 
 function onInit(payload: RenderedViewInitPayload): void {
- state.init = payload;
- state.threads = payload.threads ?? [];
- const article = document.getElementById('content') as HTMLElement | null;
- if (!article) {
-  log('error', 'Content element missing');
-  return;
- }
- article.innerHTML = sanitizeHtml(payload.fileContent.html);
- document.body.setAttribute('data-file-path', payload.filePath);
- setHeader(payload);
- attachSelectionHandlers({
-  onSelection: (sel) => {
-   const payload = captureSelection(sel);
-   if (payload) {
-    post({ type: 'selectionMade', payload });
-   }
+  state.init = payload;
+  state.threads = payload.threads ?? [];
+  const article = document.getElementById('content') as HTMLElement | null;
+  if (!article) {
+    log('error', 'Content element missing');
+    return;
   }
- });
- mountThreadMarkers(state.threads, article);
- initMermaid({
-  onError: (msg) => log('warn', 'Mermaid render failure', msg)
- });
+  article.innerHTML = sanitizeHtml(payload.fileContent.html);
+  document.body.setAttribute('data-file-path', payload.filePath);
+  setHeader(payload);
+  attachSelectionHandlers({
+    onSelection: (sel) => {
+      const payload = captureSelection(sel);
+      if (payload) {
+        post({ type: 'selectionMade', payload });
+      }
+    },
+  });
+  mountThreadMarkers(state.threads, article);
+  initMermaid({
+    onError: (msg) => log('warn', 'Mermaid render failure', msg),
+  });
 }
 
 function setHeader(payload: RenderedViewInitPayload): void {
- const banner = document.getElementById('pr-banner');
- if (!banner) return;
- banner.textContent =
-  `PR #${payload.pullRequest.id}: ${payload.pullRequest.title} ` +
-  `(${payload.pullRequest.sourceRef} → ${payload.pullRequest.targetRef})`;
+  const banner = document.getElementById('pr-banner');
+  if (!banner) return;
+  banner.textContent =
+    `PR #${payload.pullRequest.id}: ${payload.pullRequest.title} ` +
+    `(${payload.pullRequest.sourceRef} → ${payload.pullRequest.targetRef})`;
 }
 
 function clearSelection(): void {
- const sel = window.getSelection();
- if (sel) sel.removeAllRanges();
+  const sel = window.getSelection();
+  if (sel) sel.removeAllRanges();
 }
 
 function showStaleBanner(newSha: string, oldSha: string): void {
- const banner = ensureBanner();
- banner.className = 'banner warn';
- banner.innerHTML =
-  `<strong>Newer commit available.</strong> ` +
-  `Refresh to head <code>${escapeHtml(newSha.slice(0, 8))}</code> ` +
-  `(currently viewing <code>${escapeHtml(oldSha.slice(0, 8))}</code>).` +
-  `<button id="refresh-to-head-btn">Refresh</button>`;
- const btn = banner.querySelector('#refresh-to-head-btn');
- btn?.addEventListener('click', () => post({ type: 'refreshToHead' }));
+  const banner = ensureBanner();
+  banner.className = 'banner warn';
+  banner.innerHTML =
+    `<strong>Newer commit available.</strong> ` +
+    `Refresh to head <code>${escapeHtml(newSha.slice(0, 8))}</code> ` +
+    `(currently viewing <code>${escapeHtml(oldSha.slice(0, 8))}</code>).` +
+    `<button id="refresh-to-head-btn">Refresh</button>`;
+  const btn = banner.querySelector('#refresh-to-head-btn');
+  btn?.addEventListener('click', () => post({ type: 'refreshToHead' }));
 }
 
 function showError(code: string, message: string): void {
- const banner = ensureBanner();
- banner.className = 'banner error';
- banner.textContent = `[${code}] ${message}`;
+  const banner = ensureBanner();
+  banner.className = 'banner error';
+  banner.textContent = `[${code}] ${message}`;
 }
 
 function ensureBanner(): HTMLElement {
- let banner = document.getElementById('runtime-banner');
- if (!banner) {
-  banner = document.createElement('div');
-  banner.id = 'runtime-banner';
-  document.body.insertBefore(banner, document.body.firstChild);
- }
- return banner;
+  let banner = document.getElementById('runtime-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'runtime-banner';
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+  return banner;
 }
 
 function escapeHtml(s: string): string {
- return s
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // Apply a live style refresh pushed by the host after the user
@@ -183,67 +193,75 @@ function escapeHtml(s: string): string {
 // the user-stylesheet <link> elements wholesale so the cascade
 // reflects exactly what the user has currently configured.
 function onRestyle(payload: RestylePayload): void {
- const root = document.documentElement;
- root.style.setProperty('--markdown-font-family', payload.fontFamily);
- root.style.setProperty('--markdown-font-size', `${payload.fontSize}px`);
- root.style.setProperty('--markdown-line-height', String(payload.lineHeight));
- const head = document.head;
- // Replace built-in markdown.css link(s). These live BEFORE the inline
- // <style> block in source order so our overrides win, and we preserve
- // that position by inserting the new ones at the same anchor: the
- // first existing inline <style> element (which is our extension CSS).
- const styleAnchor = head.querySelector('style');
- head
-  .querySelectorAll('link[data-builtin-style="true"]')
-  .forEach((el) => el.remove());
- for (const uri of payload.builtinStyleUris) {
-  let parsed: URL;
-  try {
-   parsed = new URL(uri);
-  } catch {
-   log('warn', 'Dropped malformed built-in stylesheet uri from restyle payload', uri);
-   continue;
+  const root = document.documentElement;
+  root.style.setProperty('--markdown-font-family', payload.fontFamily);
+  root.style.setProperty('--markdown-font-size', `${payload.fontSize}px`);
+  root.style.setProperty('--markdown-line-height', String(payload.lineHeight));
+  const head = document.head;
+  // Replace built-in markdown.css link(s). These live BEFORE the inline
+  // <style> block in source order so our overrides win, and we preserve
+  // that position by inserting the new ones at the same anchor: the
+  // first existing inline <style> element (which is our extension CSS).
+  const styleAnchor = head.querySelector('style');
+  head
+    .querySelectorAll('link[data-builtin-style="true"]')
+    .forEach((el) => el.remove());
+  for (const uri of payload.builtinStyleUris) {
+    let parsed: URL;
+    try {
+      parsed = new URL(uri);
+    } catch {
+      log(
+        'warn',
+        'Dropped malformed built-in stylesheet uri from restyle payload',
+        uri,
+      );
+      continue;
+    }
+    if (parsed.protocol !== 'https:') {
+      log(
+        'warn',
+        'Dropped non-https built-in stylesheet uri from restyle payload',
+        uri,
+      );
+      continue;
+    }
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.setAttribute('data-builtin-style', 'true');
+    link.href = parsed.href;
+    if (styleAnchor) {
+      head.insertBefore(link, styleAnchor);
+    } else {
+      head.appendChild(link);
+    }
   }
-  if (parsed.protocol !== 'https:') {
-   log('warn', 'Dropped non-https built-in stylesheet uri from restyle payload', uri);
-   continue;
+  head
+    .querySelectorAll('link[data-user-style="true"]')
+    .forEach((el) => el.remove());
+  for (const uri of payload.userStyleUris) {
+    // Parse + scheme-check inline so CodeQL sees the URL sanitizer on
+    // the same data-flow path that reaches link.href. Stylesheet URIs
+    // produced by host-side `webview.asWebviewUri()` always present as
+    // https:; anything else is dropped (cannot be `javascript:`,
+    // `data:`, etc.).
+    let parsed: URL;
+    try {
+      parsed = new URL(uri);
+    } catch {
+      log('warn', 'Dropped malformed stylesheet uri from restyle payload', uri);
+      continue;
+    }
+    if (parsed.protocol !== 'https:') {
+      log('warn', 'Dropped non-https stylesheet uri from restyle payload', uri);
+      continue;
+    }
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.setAttribute('data-user-style', 'true');
+    link.href = parsed.href;
+    head.appendChild(link);
   }
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.setAttribute('data-builtin-style', 'true');
-  link.href = parsed.href;
-  if (styleAnchor) {
-   head.insertBefore(link, styleAnchor);
-  } else {
-   head.appendChild(link);
-  }
- }
- head
-  .querySelectorAll('link[data-user-style="true"]')
-  .forEach((el) => el.remove());
- for (const uri of payload.userStyleUris) {
-  // Parse + scheme-check inline so CodeQL sees the URL sanitizer on
-  // the same data-flow path that reaches link.href. Stylesheet URIs
-  // produced by host-side `webview.asWebviewUri()` always present as
-  // https:; anything else is dropped (cannot be `javascript:`,
-  // `data:`, etc.).
-  let parsed: URL;
-  try {
-   parsed = new URL(uri);
-  } catch {
-   log('warn', 'Dropped malformed stylesheet uri from restyle payload', uri);
-   continue;
-  }
-  if (parsed.protocol !== 'https:') {
-   log('warn', 'Dropped non-https stylesheet uri from restyle payload', uri);
-   continue;
-  }
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.setAttribute('data-user-style', 'true');
-  link.href = parsed.href;
-  head.appendChild(link);
- }
 }
 
 post({ type: 'ready' });

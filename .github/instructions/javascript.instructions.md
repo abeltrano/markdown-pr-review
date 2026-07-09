@@ -16,7 +16,8 @@ bundled to `out/` by esbuild — do not hand-edit anything under
 
 ## At a glance
 
-- 2-space indent, LF, single quotes, semicolons.
+- 2-space indent, LF, single quotes, semicolons — enforced by
+  **Prettier** (`npm run format`; verify with `npm run format:check`).
 - `.cjs` → CommonJS (`require` / `module.exports`); `.mjs` and
   bare `.js` under `src/` → ESM (`import` / `export`).
 - Use the `node:` prefix for built-in modules

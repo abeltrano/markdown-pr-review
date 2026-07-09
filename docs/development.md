@@ -291,11 +291,17 @@ checkout).
 See [`docs/coding-style.md`](coding-style.md) for the full
 per-language style guide. The high-level rules:
 
-- **2-space indent**, **LF** line endings (enforced by EditorConfig).
+- **2-space indent**, **LF** line endings (enforced by EditorConfig
+  and **Prettier**). Run `npm run format` to apply formatting and
+  `npm run format:check` to verify.
+- **Prettier** owns code formatting (whitespace, wrapping, quotes) for
+  TypeScript, JavaScript, JSON, CSS, and HTML; Markdown and YAML keep
+  their own conventions and are not Prettier-managed.
 - **ESLint flat config**
-  ([`eslint.config.mjs`](../eslint.config.mjs)) is the style source
-  of truth. CI fails on any warning. `npm run lint -- --fix` for
-  auto-fixes.
+  ([`eslint.config.mjs`](../eslint.config.mjs)) is the source of truth
+  for code quality (not formatting — `eslint-config-prettier` disables
+  any conflicting rules). CI fails on any warning. `npm run lint -- --fix`
+  for auto-fixes.
 - Prefer **named exports**; default exports are not used anywhere.
 - `import type { ... }` for type-only imports (rule:
   `consistent-type-imports`). `typeof import('...')` is permitted

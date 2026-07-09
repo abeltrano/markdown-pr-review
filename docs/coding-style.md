@@ -2,7 +2,7 @@
 
 This is the per-language style and convention guide for the
 `markdown-pr-review` repo. Everything here is enforced by some
-combination of `.editorconfig`, ESLint, and human review.
+combination of `.editorconfig`, Prettier, ESLint, and human review.
 
 Whitespace rules common to every language are pinned in
 [`.editorconfig`](../.editorconfig):
@@ -13,6 +13,12 @@ Whitespace rules common to every language are pinned in
 - Final newline at end of file.
 - No trailing whitespace, with one exception: Markdown's hard-line-break
   pair of trailing spaces is preserved.
+
+Code formatting (TypeScript, JavaScript, JSON, CSS, HTML) is enforced
+by [Prettier](https://prettier.io/): run `npm run format` to apply it
+and `npm run format:check` to verify. Prettier is the source of truth
+for whitespace and wrapping in those files. Markdown and YAML keep
+their own conventions and are not Prettier-managed.
 
 The language sections below add language-specific rules on top of
 that baseline. Each section lists the file globs it applies to so you

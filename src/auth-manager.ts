@@ -22,137 +22,160 @@ const ADO_DEFAULT_SCOPE = `${ADO_RESOURCE_ID}/.default`;
 const PAT_SECRET_KEY = 'markdownPrReview.pat';
 
 export interface AuthManager {
- getToken(options?: { silent?: boolean }): Promise<string>;
- /** Fired when an ADO REST call sees a 401; wired up in v0.4. */
- readonly onTokenInvalid: vscode.Event<void>;
- /** Manually trigger PAT entry (used by an explicit command in v0.4). */
- promptForPat(): Promise<void>;
- dispose(): void;
+  getToken(options?: { silent?: boolean }): Promise<string>;
+  /** Fired when an ADO REST call sees a 401; wired up in v0.4. */
+  readonly onTokenInvalid: vscode.Event<void>;
+  /** Manually trigger PAT entry (used by an explicit command in v0.4). */
+  promptForPat(): Promise<void>;
+  dispose(): void;
 }
 
 type AuthMode = 'msal' | 'pat';
 
 export class VsCodeAuthManager implements AuthManager {
- private readonly log: Logger;
- private readonly emitter = new vscode.EventEmitter<void>();
- private mode: AuthMode = 'msal';
+  private readonly log: Logger;
+  private readonly emitter = new vscode.EventEmitter<void>();
+  private mode: AuthMode = 'msal';
 
- readonly onTokenInvalid = this.emitter.event;
+  readonly onTokenInvalid = this.emitter.event;
 
- constructor(private readonly context: vscode.ExtensionContext, log?: Logger) {
-  this.log = log ?? getLogger('AuthManager');
- }
-
- async getToken(options: { silent?: boolean } = {}): Promise<string> {
-  const silent = options.silent !== false;
-  // If a PAT has been stored, prefer it (RISK-003 fallback once
-  // chosen, sticky for the session — avoids re-prompting users
-  // who already opted into PAT mode).
-  const storedPat = await this.context.secrets.get(PAT_SECRET_KEY);
-  if (storedPat) {
-   this.mode = 'pat';
-   return storedPat;
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    log?: Logger,
+  ) {
+    this.log = log ?? getLogger('AuthManager');
   }
-  try {
-   const session = await vscode.authentication.getSession(
-    'microsoft',
-    [ADO_DEFAULT_SCOPE],
-    silent ? { silent: true } : { createIfNone: true }
-   );
-   if (session) {
-    this.mode = 'msal';
-    return session.accessToken;
-   }
-   if (silent) {
-    // Silent acquire failed — caller should retry with silent=false
-    throw new AuthAcquisitionError('silent', 'No cached session; silent auth not allowed to prompt.');
-   }
-   throw new AuthAcquisitionError('no-session', 'getSession returned undefined despite createIfNone.');
-  } catch (err) {
-   const friendly = err instanceof Error ? err.message : String(err);
-   if (silent) {
-    // A silent acquisition that fails — whether it returned no session
-    // (AuthAcquisitionError above) or the provider threw because it needs
-    // interaction (VS Code reports "Canceled" when account selection or
-    // consent is required but UI is suppressed) — means we cannot get a
-    // token without a prompt. Normalize to a silent-acquisition failure so
-    // the caller (ado-client.ts) performs the interactive retry, instead of
-    // surfacing a raw cancellation as an unexpected error (RISK-003).
-    if (err instanceof AuthAcquisitionError) {
-     throw err;
+
+  async getToken(options: { silent?: boolean } = {}): Promise<string> {
+    const silent = options.silent !== false;
+    // If a PAT has been stored, prefer it (RISK-003 fallback once
+    // chosen, sticky for the session — avoids re-prompting users
+    // who already opted into PAT mode).
+    const storedPat = await this.context.secrets.get(PAT_SECRET_KEY);
+    if (storedPat) {
+      this.mode = 'pat';
+      return storedPat;
     }
-    this.log.info('Silent Microsoft auth requires interaction; retrying interactively.', { error: friendly });
-    throw new AuthAcquisitionError('silent', `Silent acquisition failed: ${friendly}`);
-   }
-   // Non-silent failure: offer PAT fallback per RISK-003.
-   this.log.warn('Microsoft auth getSession failed; offering PAT fallback.', { error: friendly });
-   const choice = await vscode.window.showWarningMessage(
-    `Azure DevOps sign-in via the Microsoft account provider failed: ${friendly}. Use a Personal Access Token instead?`,
-    'Enter PAT',
-    'Cancel'
-   );
-   if (choice === 'Enter PAT') {
-    await this.promptForPat();
-    const pat = await this.context.secrets.get(PAT_SECRET_KEY);
-    if (pat) {
-     this.mode = 'pat';
-     return pat;
+    try {
+      const session = await vscode.authentication.getSession(
+        'microsoft',
+        [ADO_DEFAULT_SCOPE],
+        silent ? { silent: true } : { createIfNone: true },
+      );
+      if (session) {
+        this.mode = 'msal';
+        return session.accessToken;
+      }
+      if (silent) {
+        // Silent acquire failed — caller should retry with silent=false
+        throw new AuthAcquisitionError(
+          'silent',
+          'No cached session; silent auth not allowed to prompt.',
+        );
+      }
+      throw new AuthAcquisitionError(
+        'no-session',
+        'getSession returned undefined despite createIfNone.',
+      );
+    } catch (err) {
+      const friendly = err instanceof Error ? err.message : String(err);
+      if (silent) {
+        // A silent acquisition that fails — whether it returned no session
+        // (AuthAcquisitionError above) or the provider threw because it needs
+        // interaction (VS Code reports "Canceled" when account selection or
+        // consent is required but UI is suppressed) — means we cannot get a
+        // token without a prompt. Normalize to a silent-acquisition failure so
+        // the caller (ado-client.ts) performs the interactive retry, instead of
+        // surfacing a raw cancellation as an unexpected error (RISK-003).
+        if (err instanceof AuthAcquisitionError) {
+          throw err;
+        }
+        this.log.info(
+          'Silent Microsoft auth requires interaction; retrying interactively.',
+          { error: friendly },
+        );
+        throw new AuthAcquisitionError(
+          'silent',
+          `Silent acquisition failed: ${friendly}`,
+        );
+      }
+      // Non-silent failure: offer PAT fallback per RISK-003.
+      this.log.warn(
+        'Microsoft auth getSession failed; offering PAT fallback.',
+        { error: friendly },
+      );
+      const choice = await vscode.window.showWarningMessage(
+        `Azure DevOps sign-in via the Microsoft account provider failed: ${friendly}. Use a Personal Access Token instead?`,
+        'Enter PAT',
+        'Cancel',
+      );
+      if (choice === 'Enter PAT') {
+        await this.promptForPat();
+        const pat = await this.context.secrets.get(PAT_SECRET_KEY);
+        if (pat) {
+          this.mode = 'pat';
+          return pat;
+        }
+      }
+      throw err;
     }
-   }
-   throw err;
   }
- }
 
- async promptForPat(): Promise<void> {
-  const pat = await vscode.window.showInputBox({
-   prompt: 'Enter an Azure DevOps Personal Access Token (vso.code + vso.code_write scopes)',
-   password: true,
-   ignoreFocusOut: true,
-   placeHolder: 'PAT value (not stored to disk — uses VS Code Secret Storage)'
-  });
-  if (!pat) {
-   this.log.info('PAT prompt cancelled.');
-   return;
+  async promptForPat(): Promise<void> {
+    const pat = await vscode.window.showInputBox({
+      prompt:
+        'Enter an Azure DevOps Personal Access Token (vso.code + vso.code_write scopes)',
+      password: true,
+      ignoreFocusOut: true,
+      placeHolder:
+        'PAT value (not stored to disk — uses VS Code Secret Storage)',
+    });
+    if (!pat) {
+      this.log.info('PAT prompt cancelled.');
+      return;
+    }
+    await this.context.secrets.store(PAT_SECRET_KEY, pat.trim());
+    this.log.info('PAT stored in secret storage.');
   }
-  await this.context.secrets.store(PAT_SECRET_KEY, pat.trim());
-  this.log.info('PAT stored in secret storage.');
- }
 
- /**
-  * Called by the ADO Client when a 401 indicates the cached token has
-  * expired. Clears any stored PAT (only if it's the source of failure)
-  * and emits onTokenInvalid so future callers can decide whether to
-  * re-prompt.
-  */
- invalidateToken(): void {
-  this.emitter.fire();
- }
-
- /** Indicates which token source is currently active. Useful for diagnostics. */
- get currentMode(): AuthMode {
-  return this.mode;
- }
-
- dispose(): void {
-  this.emitter.dispose();
- }
-
- /**
-  * Build the Authorization header value for the current mode.
-  * MSAL → "Bearer {token}". PAT → "Basic {base64(:{token})}".
-  */
- static buildAuthHeader(token: string, mode: AuthMode): string {
-  if (mode === 'pat') {
-   const encoded = Buffer.from(`:${token}`, 'utf8').toString('base64');
-   return `Basic ${encoded}`;
+  /**
+   * Called by the ADO Client when a 401 indicates the cached token has
+   * expired. Clears any stored PAT (only if it's the source of failure)
+   * and emits onTokenInvalid so future callers can decide whether to
+   * re-prompt.
+   */
+  invalidateToken(): void {
+    this.emitter.fire();
   }
-  return `Bearer ${token}`;
- }
+
+  /** Indicates which token source is currently active. Useful for diagnostics. */
+  get currentMode(): AuthMode {
+    return this.mode;
+  }
+
+  dispose(): void {
+    this.emitter.dispose();
+  }
+
+  /**
+   * Build the Authorization header value for the current mode.
+   * MSAL → "Bearer {token}". PAT → "Basic {base64(:{token})}".
+   */
+  static buildAuthHeader(token: string, mode: AuthMode): string {
+    if (mode === 'pat') {
+      const encoded = Buffer.from(`:${token}`, 'utf8').toString('base64');
+      return `Basic ${encoded}`;
+    }
+    return `Bearer ${token}`;
+  }
 }
 
 export class AuthAcquisitionError extends Error {
- constructor(public readonly kind: 'silent' | 'no-session', message: string) {
-  super(message);
-  this.name = 'AuthAcquisitionError';
- }
+  constructor(
+    public readonly kind: 'silent' | 'no-session',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AuthAcquisitionError';
+  }
 }

@@ -10,7 +10,8 @@ This file is a thin pointer scoped to TypeScript files via the
 
 ## At a glance
 
-- 2-space indent, LF, single quotes, semicolons.
+- 2-space indent, LF, single quotes, semicolons — enforced by
+  **Prettier** (`npm run format`; verify with `npm run format:check`).
 - Named exports only; `import type { ... }` (or inline
   `import { type Foo, bar }`) for type-only imports.
 - `strict: true`; avoid `any`, avoid non-null assertions; use

@@ -9,98 +9,115 @@ import * as vscode from 'vscode';
 import { getLogger } from './logger';
 import { buildCommentInputCsp, generateNonce } from './views/csp';
 import type {
- HostToInputView,
- InputViewToHost,
- SelectionPostedPayload
+  HostToInputView,
+  InputViewToHost,
+  SelectionPostedPayload,
 } from './types';
 import type { SessionManager } from './session-manager';
 
 export class CommentInputViewProvider implements vscode.WebviewViewProvider {
- public static readonly viewId = 'markdownPrReview.commentInput';
+  public static readonly viewId = 'markdownPrReview.commentInput';
 
- private readonly log = getLogger('CommentInputView');
- private view: vscode.WebviewView | null = null;
- private pendingSelection: SelectionPostedPayload | null = null;
+  private readonly log = getLogger('CommentInputView');
+  private view: vscode.WebviewView | null = null;
+  private pendingSelection: SelectionPostedPayload | null = null;
 
- constructor(
-  private readonly context: vscode.ExtensionContext,
-  private readonly sessionManager: SessionManager
- ) {}
+  constructor(
+    private readonly context: vscode.ExtensionContext,
+    private readonly sessionManager: SessionManager,
+  ) {}
 
- resolveWebviewView(
-  webviewView: vscode.WebviewView,
-  _ctx: vscode.WebviewViewResolveContext,
-  _token: vscode.CancellationToken
- ): void | Thenable<void> {
-  this.view = webviewView;
-  const distRoot = vscode.Uri.joinPath(this.context.extensionUri, 'out');
-  webviewView.webview.options = {
-   enableScripts: true,
-   localResourceRoots: [distRoot]
-  };
-  webviewView.webview.html = this.buildHtml(webviewView.webview);
-  webviewView.webview.onDidReceiveMessage((msg: InputViewToHost) => {
-   this.handleMessage(msg);
-  });
-  webviewView.onDidDispose(() => {
-   this.view = null;
-  });
- }
-
- showSelection(payload: SelectionPostedPayload): void {
-  if (!this.view) {
-   this.pendingSelection = payload;
-   void vscode.commands.executeCommand('markdownPrReview.commentInput.focus');
-   return;
+  resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _ctx: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken,
+  ): void | Thenable<void> {
+    this.view = webviewView;
+    const distRoot = vscode.Uri.joinPath(this.context.extensionUri, 'out');
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [distRoot],
+    };
+    webviewView.webview.html = this.buildHtml(webviewView.webview);
+    webviewView.webview.onDidReceiveMessage((msg: InputViewToHost) => {
+      this.handleMessage(msg);
+    });
+    webviewView.onDidDispose(() => {
+      this.view = null;
+    });
   }
-  this.post({ type: 'selectionPosted', payload });
- }
 
- clearDraft(): void {
-  this.pendingSelection = null;
-  this.post({ type: 'draftCleared' });
- }
-
- showError(code: string, message: string, recoverable = true): void {
-  this.post({ type: 'error', payload: { code, message, recoverable } });
- }
-
- private post(msg: HostToInputView): void {
-  if (this.view) {
-   void this.view.webview.postMessage(msg);
-  }
- }
-
- private handleMessage(msg: InputViewToHost): void {
-  switch (msg.type) {
-   case 'ready':
-    if (this.pendingSelection) {
-     this.post({ type: 'selectionPosted', payload: this.pendingSelection });
-     this.pendingSelection = null;
+  showSelection(payload: SelectionPostedPayload): void {
+    if (!this.view) {
+      this.pendingSelection = payload;
+      void vscode.commands.executeCommand(
+        'markdownPrReview.commentInput.focus',
+      );
+      return;
     }
-    break;
-   case 'requestPostThread':
-    void this.sessionManager.handlePostThread(msg.payload);
-    break;
-   case 'cancelDraft':
-    void this.sessionManager.handleCancelDraft();
-    break;
-   case 'log':
-    this.log[msg.payload.level](msg.payload.message, msg.payload.context);
-    break;
+    this.post({ type: 'selectionPosted', payload });
   }
- }
 
- private buildHtml(webview: vscode.Webview): string {
-  const nonce = generateNonce();
-  const csp = buildCommentInputCsp({ nonce, webview });
-  const scriptUri = webview.asWebviewUri(
-   vscode.Uri.joinPath(this.context.extensionUri, 'out', 'views', 'comment-input', 'main.js')
-  );
-  const styleUri = webview.asWebviewUri(
-   vscode.Uri.joinPath(this.context.extensionUri, 'out', 'views', 'comment-input', 'styles.css')
-  );
-  return /* html */ `<!doctype html>
+  clearDraft(): void {
+    this.pendingSelection = null;
+    this.post({ type: 'draftCleared' });
+  }
+
+  showError(code: string, message: string, recoverable = true): void {
+    this.post({ type: 'error', payload: { code, message, recoverable } });
+  }
+
+  private post(msg: HostToInputView): void {
+    if (this.view) {
+      void this.view.webview.postMessage(msg);
+    }
+  }
+
+  private handleMessage(msg: InputViewToHost): void {
+    switch (msg.type) {
+      case 'ready':
+        if (this.pendingSelection) {
+          this.post({
+            type: 'selectionPosted',
+            payload: this.pendingSelection,
+          });
+          this.pendingSelection = null;
+        }
+        break;
+      case 'requestPostThread':
+        void this.sessionManager.handlePostThread(msg.payload);
+        break;
+      case 'cancelDraft':
+        void this.sessionManager.handleCancelDraft();
+        break;
+      case 'log':
+        this.log[msg.payload.level](msg.payload.message, msg.payload.context);
+        break;
+    }
+  }
+
+  private buildHtml(webview: vscode.Webview): string {
+    const nonce = generateNonce();
+    const csp = buildCommentInputCsp({ nonce, webview });
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(
+        this.context.extensionUri,
+        'out',
+        'views',
+        'comment-input',
+        'main.js',
+      ),
+    );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(
+        this.context.extensionUri,
+        'out',
+        'views',
+        'comment-input',
+        'styles.css',
+      ),
+    );
+    return /* html */ `<!doctype html>
 <html lang="en">
 <head>
  <meta charset="utf-8">
@@ -113,5 +130,5 @@ export class CommentInputViewProvider implements vscode.WebviewViewProvider {
  <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
- }
+  }
 }

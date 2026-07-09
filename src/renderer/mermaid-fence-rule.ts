@@ -38,38 +38,38 @@ import type MarkdownIt from 'markdown-it';
 //     docs that introduce or modify a mermaid diagram in a PR did not
 //     visually surface as changed.
 const PASSTHROUGH_ATTR_NAMES = [
- 'data-source-line-start',
- 'data-source-line-end',
- 'data-diff-state',
- 'data-diff-deleted'
+  'data-source-line-start',
+  'data-source-line-end',
+  'data-diff-state',
+  'data-diff-deleted',
 ] as const;
 
 export function applyMermaidFenceRule(md: MarkdownIt): void {
- const previous = md.renderer.rules.fence;
- md.renderer.rules.fence = (tokens, idx, options, env, self) => {
-  const token = tokens[idx]!;
-  const info = (token.info ?? '').trim().toLowerCase();
-  if (info !== 'mermaid') {
-   return previous
-    ? previous(tokens, idx, options, env, self)
-    : self.renderToken(tokens, idx, options);
-  }
-  let passthroughAttrs = '';
-  for (const name of PASSTHROUGH_ATTR_NAMES) {
-   const value = token.attrGet(name);
-   if (value !== null && value !== '') {
-    passthroughAttrs += ` ${name}="${escapeForAttribute(value)}"`;
-   }
-  }
-  const encoded = encodeURIComponent(token.content);
-  return `<div class="mermaid"${passthroughAttrs} data-mermaid-source="${encoded}" data-mermaid-state="pending"></div>\n`;
- };
+  const previous = md.renderer.rules.fence;
+  md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+    const token = tokens[idx]!;
+    const info = (token.info ?? '').trim().toLowerCase();
+    if (info !== 'mermaid') {
+      return previous
+        ? previous(tokens, idx, options, env, self)
+        : self.renderToken(tokens, idx, options);
+    }
+    let passthroughAttrs = '';
+    for (const name of PASSTHROUGH_ATTR_NAMES) {
+      const value = token.attrGet(name);
+      if (value !== null && value !== '') {
+        passthroughAttrs += ` ${name}="${escapeForAttribute(value)}"`;
+      }
+    }
+    const encoded = encodeURIComponent(token.content);
+    return `<div class="mermaid"${passthroughAttrs} data-mermaid-source="${encoded}" data-mermaid-state="pending"></div>\n`;
+  };
 }
 
 function escapeForAttribute(src: string): string {
- return src
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;');
+  return src
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
