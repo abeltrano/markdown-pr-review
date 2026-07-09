@@ -108,9 +108,9 @@ The extension targets the reviewer running it locally; comments it posts are rou
 
 #### Core review session
 
-**REQ-CORE-001** *(v0.1)*: The extension SHALL register a command `adoMdReview.openPullRequest` which, when invoked, prompts the user for a pull request URL or numeric ID and begins a review session for that PR.
+**REQ-CORE-001** *(v0.1)*: The extension SHALL register a command `markdownPrReview.openPullRequest` which, when invoked, prompts the user for a pull request URL or numeric ID and begins a review session for that PR.
 
-- AC-1: Running `adoMdReview.openPullRequest` from the Command Palette displays an input box with placeholder text describing the accepted formats.
+- AC-1: Running `markdownPrReview.openPullRequest` from the Command Palette displays an input box with placeholder text describing the accepted formats.
 - AC-2: Submitting a valid PR URL such as `https://microsoft.visualstudio.com/{project}/_git/{repo}/pullrequest/12345` opens a webview titled with the PR number and title within 5 seconds on a reliable network.
 - AC-3: Submitting an invalid URL or a PR number without an active workspace-configured default project SHALL surface an error message and not open a webview.
 
@@ -196,7 +196,7 @@ The extension targets the reviewer running it locally; comments it posts are rou
 
 **REQ-AUTH-001** *(v0.1)*: The extension MUST authenticate to Azure DevOps using VS Code's built-in Microsoft authentication provider (`vscode.authentication.getSession('microsoft', scopes, { createIfNone: true })`).
 
-- AC-1: On first invocation of `adoMdReview.openPullRequest`, the user is prompted by VS Code's auth flow if no Microsoft session exists.
+- AC-1: On first invocation of `markdownPrReview.openPullRequest`, the user is prompted by VS Code's auth flow if no Microsoft session exists.
 - AC-2: On subsequent invocations within the same VS Code session, no auth prompt appears as long as the token is valid.
 - AC-3: The extension SHALL request only the scopes required for PR thread read/write (see ASM-006).
 
@@ -229,10 +229,10 @@ The extension targets the reviewer running it locally; comments it posts are rou
 
 **REQ-UX-002** *(v0.4)*: The extension SHOULD provide configuration settings for (a) the default ADO organization, (b) the default project, and (c) the path to a list of repositories the user reviews frequently, to streamline PR-URL parsing and PR-ID resolution.
 
-- AC-1: With `adoMdReview.defaultOrganization = "microsoft"` configured, the user MAY paste a PR URL that omits the organization segment and the extension SHALL still resolve it.
-- AC-2: With `adoMdReview.defaultProject` configured, the user MAY invoke the command with a numeric PR ID alone.
+- AC-1: With `markdownPrReview.defaultOrganization = "microsoft"` configured, the user MAY paste a PR URL that omits the organization segment and the extension SHALL still resolve it.
+- AC-2: With `markdownPrReview.defaultProject` configured, the user MAY invoke the command with a numeric PR ID alone.
 
-**REQ-UX-003** *(v0.4)*: The extension SHOULD expose a default keybinding (configurable) for `adoMdReview.openPullRequest`.
+**REQ-UX-003** *(v0.4)*: The extension SHOULD expose a default keybinding (configurable) for `markdownPrReview.openPullRequest`.
 
 - AC-1: A default keybinding is registered in [`package.json`](../package.json) (e.g., `ctrl+alt+r`) and can be overridden via standard VS Code keybindings UI.
 
