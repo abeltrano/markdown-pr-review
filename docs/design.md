@@ -50,11 +50,11 @@ flowchart TB
       Watch[Stale-PR Watcher]
       Status[Status Bar Controller]
       Log[Output Channel / Logger]
-      CEP["CustomEditorProvider<br/>(adopr:// scheme)"]
+      CEP["CustomEditorProvider<br/>(mdpr:// scheme)"]
       TVProv["FileTreeView Provider"]
       CmtView["CommentInputView Provider<br/>(WebviewView)"]
     end
-    subgraph RW["Rendered-View Webview<br/>(one per open adopr:// editor)"]
+    subgraph RW["Rendered-View Webview<br/>(one per open mdpr:// editor)"]
       UI[Rendered Markdown DOM]
       Sel[Selection Handler]
       Markers[Thread Markers + Popover]
@@ -104,15 +104,15 @@ flowchart TB
 #### Command Registry
 
 - **Responsibility**: Register VS Code commands and route invocations. (REQ-CORE-001, REQ-UX-001, REQ-UX-003)
-- **Interfaces**: Contributes `adoMdReview.openPullRequest`, `adoMdReview.focusRenderedView`, `adoMdReview.focusCommentInput`, `adoMdReview.refreshThreads`, `adoMdReview.commentOnSelection` (commands). Default keybindings: `openPullRequest` and `commentOnSelection` (the latter active only when `adoMdReview.renderedViewFocused`).
+- **Interfaces**: Contributes `markdownPrReview.openPullRequest`, `markdownPrReview.focusRenderedView`, `adoMdReview.focusCommentInput`, `markdownPrReview.refreshThreads`, `markdownPrReview.addComment` (commands). Default keybindings: `openPullRequest` and `addComment` (the latter active only when `adoMdReview.renderedViewFocused`).
 - **Dependencies**: PR URL Parser, Session Manager.
-- **Constraints**: Activation event tied to command invocation (`onCommand:adoMdReview.openPullRequest`) to keep cold-start cost zero.
+- **Constraints**: Activation event tied to command invocation (`onCommand:markdownPrReview.openPullRequest`) to keep cold-start cost zero.
 
 #### PR URL Parser
 
 - **Responsibility**: Convert reviewer input (full URL, bare PR ID, or `org/project/repo/id` triple) into a normalized `PullRequestRef`. (REQ-CORE-001, ASM-001, RISK-007)
 - **Interfaces**: `parse(input: string, settings: Settings) → PullRequestRef | ParseError`.
-- **Dependencies**: `adoMdReview.defaultOrganization` and `adoMdReview.defaultProject` from VS Code configuration (REQ-UX-002).
+- **Dependencies**: `markdownPrReview.defaultOrganization` and `markdownPrReview.defaultProject` from VS Code configuration (REQ-UX-002).
 - **Constraints**: Must accept BOTH `microsoft.visualstudio.com/{project}/_git/{repo}/pullrequest/{id}` AND `dev.azure.com/{org}/{project}/_git/{repo}/pullrequest/{id}`. Internally normalized to `dev.azure.com/{org}/...` to dodge legacy-host quirks (RISK-007 mitigation).
 
 #### Auth Manager
@@ -140,7 +140,7 @@ flowchart TB
 - **Responsibility**: Hold per-session state — `PullRequestRef`, head SHA, merge-base SHA, file list, opened-editors map, threads cache, active draft. (REQ-CORE-002, REQ-CORE-006, REQ-COMMENT-005 AC-3, REQ-ERR-002, ASM-005)
 - **Interfaces**: `openSession(ref) → Session`; `closeSession()`; `requestRender(filePath) → { html, sourceMap }`; getters for state; emits `onStateChanged`.
 - **Dependencies**: ADO Client, Renderer Pipeline, CustomEditorProvider, FileTreeView, CommentInputView provider, Stale-PR Watcher, Status Bar Controller, Comment Controller.
-- **Constraints**: At most one active session per VS Code window (CON-001, ASM-005). When the last `adopr://` editor closes, all child resources (webviews, watcher, status bar item, view container) are disposed.
+- **Constraints**: At most one active session per VS Code window (CON-001, ASM-005). When the last `mdpr://` editor closes, all child resources (webviews, watcher, status bar item, view container) are disposed.
 
 #### Renderer Pipeline
 
@@ -175,10 +175,10 @@ These are small functions in `src/renderer/` that hook into `markdown-it`'s publ
 
 #### CustomEditorProvider (host side)
 
-- **Responsibility**: Register a `vscode.CustomReadonlyEditorProvider` for the `adopr://` URI scheme. Each open PR file becomes its own VS Code editor tab; VS Code manages the lifecycle (open, focus, close, hot-exit, panel layout) for free. (REQ-CORE-001 AC-2, REQ-NFR-SEC-001)
+- **Responsibility**: Register a `vscode.CustomReadonlyEditorProvider` for the `mdpr://` URI scheme. Each open PR file becomes its own VS Code editor tab; VS Code manages the lifecycle (open, focus, close, hot-exit, panel layout) for free. (REQ-CORE-001 AC-2, REQ-NFR-SEC-001)
 - **Interfaces**: `openCustomDocument(uri)`, `resolveCustomEditor(document, webviewPanel)`. Internally: `postMessage(uri, msg)`, `onDidReceiveMessage(uri, handler)`.
 - **Dependencies**: VS Code Webview API, Session Manager (to fetch rendered HTML + threads + diff annotations for the URI's PR/file), CSP composer (§6).
-- **Constraints**: CSP per §6; bundled assets served via `webview.asWebviewUri(...)`. The provider is registered for **only** the `adopr://` scheme so it cannot accidentally activate on real workspace files. Closing the editor disposes the underlying `Session`'s reference to this file (but not the session itself; other files may still be open).
+- **Constraints**: CSP per §6; bundled assets served via `webview.asWebviewUri(...)`. The provider is registered for **only** the `mdpr://` scheme so it cannot accidentally activate on real workspace files. Closing the editor disposes the underlying `Session`'s reference to this file (but not the session itself; other files may still be open).
 
 #### Rendered-View Webview (renderer side)
 
@@ -203,10 +203,10 @@ These are small functions in `src/renderer/` that hook into `markdown-it`'s publ
 
 #### FileTreeView (host side, native `TreeView`)
 
-- **Responsibility**: Provide a native sidebar tree of the PR's changed markdown files; selecting a file opens (or focuses) the corresponding `adopr://` editor tab. (REQ-CORE-006)
+- **Responsibility**: Provide a native sidebar tree of the PR's changed markdown files; selecting a file opens (or focuses) the corresponding `mdpr://` editor tab. (REQ-CORE-006)
 - **Interfaces**: Implements `vscode.TreeDataProvider<FileNode>`. Refreshes via `onDidChangeTreeData` when Session Manager updates the file list or thread counts.
 - **Dependencies**: Session Manager.
-- **Constraints**: TreeView contributes to a custom view container in the activity bar (`adoMdReview` container) shown only when a session is active (`when: adoMdReview.sessionActive`). Each tree item carries a comment-count badge (REQ-CORE-006 AC-3). Clicking a file invokes `vscode.commands.executeCommand('vscode.openWith', adoprUri, 'adoMdReview.renderedView')` which routes through the CustomEditorProvider.
+- **Constraints**: TreeView contributes to a custom view container in the activity bar (`markdownPrReview` container) shown only when a session is active (`when: adoMdReview.sessionActive`). Each tree item carries a comment-count badge (REQ-CORE-006 AC-3). Clicking a file invokes `vscode.commands.executeCommand('vscode.openWith', mdprUri, 'markdownPrReview.renderedView')` which routes through the CustomEditorProvider.
 
 #### CommentInputView (host side, sidebar `WebviewView`)
 
@@ -260,7 +260,7 @@ These are small functions in `src/renderer/` that hook into `markdown-it`'s publ
 - **Responsibility**: Show/hide a status bar item reflecting active session. (REQ-UX-001)
 - **Interfaces**: `show(session, file)`; `hide()`.
 - **Dependencies**: VS Code Status Bar API.
-- **Constraints**: Click action = `adoMdReview.focusRenderedView`; disposed on session close (REQ-UX-001 AC-3).
+- **Constraints**: Click action = `markdownPrReview.focusRenderedView`; disposed on session close (REQ-UX-001 AC-3).
 
 #### Output Channel / Logger
 
@@ -298,7 +298,7 @@ sequenceDiagram
   Sess->>Tree: refresh(files, threadCounts)
   Tree-->>User: native sidebar tree visible
   User->>Tree: click file
-  Tree->>CEP: openWith(adopr://...)
+  Tree->>CEP: openWith(mdpr://...)
   CEP->>Sess: requestRender(filePath)
   Sess->>ADO: getFileContent(repoId, headSha, file)
   ADO-->>Sess: rawMarkdown
@@ -379,7 +379,7 @@ All endpoints use base URL `https://dev.azure.com/{org}` (normalized from `micro
 
 There are **two** webviews and one native TreeView per session, each with its own protocol channel to the extension host. Schemas use a discriminator `type` field on JSON objects.
 
-##### Host → Rendered-View Webview (one channel per open `adopr://` editor)
+##### Host → Rendered-View Webview (one channel per open `mdpr://` editor)
 
 ```typescript
 type HostToRenderedView =
@@ -440,7 +440,7 @@ interface SelectionPostedPayload {
   mappingMode: 'precise' | 'coarse-mermaid' | 'coarse-html-block'
               | 'coarse-multi-block' | 'coarse-ambiguous-text' | 'coarse-text-not-found';
   autoQuote: string;                              // already truncated to 200 chars per REQ-COMMENT-003 AC-2
-  originatingFileUri: string;                     // adopr:// URI of source webview, used for threadCreated routing
+  originatingFileUri: string;                     // mdpr:// URI of source webview, used for threadCreated routing
 }
 ```
 
@@ -464,7 +464,7 @@ interface PostThreadRequest {
 
 ##### FileTreeView (host-internal, no postMessage)
 
-FileTreeView is a native `TreeDataProvider`; its data flow is method calls (`getChildren`, `getTreeItem`, `onDidChangeTreeData`), not postMessage. Selection in the tree invokes `vscode.commands.executeCommand('vscode.openWith', adoprUri, 'adoMdReview.renderedView')`.
+FileTreeView is a native `TreeDataProvider`; its data flow is method calls (`getChildren`, `getTreeItem`, `onDidChangeTreeData`), not postMessage. Selection in the tree invokes `vscode.commands.executeCommand('vscode.openWith', mdprUri, 'markdownPrReview.renderedView')`.
 
 ##### Versioning strategy
 
@@ -474,13 +474,13 @@ Each protocol carries an optional `protocolVersion: number` field on `init` / `r
 
 | Contribution point | Value | REQ |
 |---|---|---|
-| `commands` | `adoMdReview.openPullRequest`, `adoMdReview.focusRenderedView`, `adoMdReview.focusCommentInput`, `adoMdReview.refreshThreads`, `adoMdReview.commentOnSelection` | REQ-CORE-001, REQ-UX-001, REQ-UX-003, REQ-COMMENT-001 AC-4, REQ-COMMENT-005 AC-3 |
-| `keybindings` | `adoMdReview.openPullRequest` → `ctrl+alt+r` (overridable); `adoMdReview.commentOnSelection` → `ctrl+alt+c` when `adoMdReview.renderedViewFocused` (overridable) | REQ-UX-003 AC-1, REQ-COMMENT-001 AC-4 |
-| `configuration` | `adoMdReview.defaultOrganization` (string, default `""`), `adoMdReview.defaultProject` (string, default `""`), `adoMdReview.staleCommitPollSeconds` (integer, default 30, min 15, max 60) | REQ-UX-002, REQ-ERR-002 AC-3 |
-| `viewsContainers.activitybar` | `adoMdReview` container with codicon icon (only visible when `adoMdReview.sessionActive`) | REQ-CORE-006, REQ-COMMENT-001 |
-| `views.adoMdReview` | `adoMdReview.fileTree` (TreeView), `adoMdReview.commentInput` (WebviewView) | REQ-CORE-006, REQ-COMMENT-001 AC-5 |
-| `customEditors` | `adoMdReview.renderedView` for scheme `adopr` (priority `default`, `displayName: "ADO PR Markdown"`) | REQ-CORE-001 AC-2, REQ-CORE-005 |
-| `activationEvents` | `onCommand:adoMdReview.openPullRequest`, `onCustomEditor:adoMdReview.renderedView`, `onView:adoMdReview.fileTree`, `onView:adoMdReview.commentInput`, `onUri` (for `vscode://...` deep links to PRs, future) | NFR-PERF-001 (zero cold-start) |
+| `commands` | `markdownPrReview.openPullRequest`, `markdownPrReview.focusRenderedView`, `adoMdReview.focusCommentInput`, `markdownPrReview.refreshThreads`, `markdownPrReview.addComment` | REQ-CORE-001, REQ-UX-001, REQ-UX-003, REQ-COMMENT-001 AC-4, REQ-COMMENT-005 AC-3 |
+| `keybindings` | `markdownPrReview.openPullRequest` → `ctrl+alt+r` (overridable); `markdownPrReview.addComment` → `ctrl+alt+c` when `adoMdReview.renderedViewFocused` (overridable) | REQ-UX-003 AC-1, REQ-COMMENT-001 AC-4 |
+| `configuration` | `markdownPrReview.defaultOrganization` (string, default `""`), `markdownPrReview.defaultProject` (string, default `""`), `markdownPrReview.staleCommitPollSeconds` (integer, default 30, min 15, max 60) | REQ-UX-002, REQ-ERR-002 AC-3 |
+| `viewsContainers.activitybar` | `markdownPrReview` container with codicon icon (only visible when `adoMdReview.sessionActive`) | REQ-CORE-006, REQ-COMMENT-001 |
+| `views.markdownPrReview` | `markdownPrReview.fileTree` (TreeView), `markdownPrReview.commentInput` (WebviewView) | REQ-CORE-006, REQ-COMMENT-001 AC-5 |
+| `customEditors` | `markdownPrReview.renderedView` for scheme `mdpr` (priority `default`, `displayName: "ADO PR Markdown"`) | REQ-CORE-001 AC-2, REQ-CORE-005 |
+| `activationEvents` | `onCommand:markdownPrReview.openPullRequest`, `onCustomEditor:markdownPrReview.renderedView`, `onView:markdownPrReview.fileTree`, `onView:markdownPrReview.commentInput`, `onUri` (for `vscode://...` deep links to PRs, future) | NFR-PERF-001 (zero cold-start) |
 | `engines.vscode` | `^1.85.0` | REQ-NFR-COMPAT-001 AC-1 |
 
 The `when` clauses `adoMdReview.sessionActive` and `adoMdReview.renderedViewFocused` are set via `vscode.commands.executeCommand('setContext', ...)` by Session Manager and CustomEditorProvider respectively.
@@ -559,7 +559,7 @@ interface MappingResult {
 
 interface Draft {
   filePath: string;
-  originatingFileUri: string;          // adopr:// URI of the rendered-view webview
+  originatingFileUri: string;          // mdpr:// URI of the rendered-view webview
   range: { rightFileStart: { line: number; offset: number };
            rightFileEnd: { line: number; offset: number } };
   mappingMode: MappingMode;
@@ -574,7 +574,7 @@ interface Session {
   baseSha: string;
   files: ChangedFile[];
   fileContentCache: Map<string, string>;  // filePath → raw markdown at headSha
-  openedEditors: Map<string, vscode.WebviewPanel>;  // adopr:// URI → panel from CustomEditorProvider
+  openedEditors: Map<string, vscode.WebviewPanel>;  // mdpr:// URI → panel from CustomEditorProvider
   threads: Thread[];
   activeDraft: Draft | null;           // at most one draft at a time (see §4.3.3)
   watcher: StalePRWatcher;
@@ -606,7 +606,7 @@ interface Session {
 ```
 
 - Session state is held **in-memory only** (CON-006 reinforces no workspace mutation; no need for persistent state in v1).
-- Multiple `adopr://` editors may be open simultaneously, one per file the reviewer has opened. The Session lives until the last such editor closes; closing the FileTreeView container alone does not end the session.
+- Multiple `mdpr://` editors may be open simultaneously, one per file the reviewer has opened. The Session lives until the last such editor closes; closing the FileTreeView container alone does not end the session.
 - Disposal cascade: when the last editor closes, `Session.dispose()` runs — clears the watcher timer, removes the status bar item, removes the activity-bar view container, disposes the auth-token cache for that session.
 
 #### 4.3.2 Threads cache
@@ -665,7 +665,7 @@ Selection state is **transient**: snapshotted in the rendered-view webview at `m
   (c) A read-only `TextEditor` with a custom `TextEditorDecorationType` overlay.
 - **Decision**: (a) — custom webview surface.
 - **Rationale**:
-  1. **Contributions are global, not URI-scoped**. `markdownItPlugins`, `previewScripts`, and `previewStyles` apply to every markdown preview the reviewer opens — including unrelated workspace files. There is no per-document opt-in. Scripts can read `window.location` and no-op for non-`adopr://` URIs, but `markdown-it` plugins run during server-side render in the host process with no per-document URI context exposed; guarding them is at best fragile and at worst impossible. Polluting the user's general markdown preview experience to bolt on PR review is unacceptable.
+  1. **Contributions are global, not URI-scoped**. `markdownItPlugins`, `previewScripts`, and `previewStyles` apply to every markdown preview the reviewer opens — including unrelated workspace files. There is no per-document opt-in. Scripts can read `window.location` and no-op for non-`mdpr://` URIs, but `markdown-it` plugins run during server-side render in the host process with no per-document URI context exposed; guarding them is at best fragile and at worst impossible. Polluting the user's general markdown preview experience to bolt on PR review is unacceptable.
   2. **CSP ownership is forfeited**. REQ-NFR-SEC-001 mandates a strict CSP with explicit allow-lists for scripts, styles, fonts, and images. The built-in preview manages its own CSP and merges contributed scripts/styles into it; we cannot pin the policy, audit nonces, or guarantee that future VS Code preview changes don't loosen it. Owning the webview means owning the CSP.
   3. **Selection-to-source mapping is independent of surface choice**. The hard work (mapping rendered selections to raw markdown line/offset ranges) lives in our Selection Mapper component (REQ-COMMENT-002). The built-in preview gives us no extra leverage here — we still inject the same source-map attributes via `markdown-it` rules and still implement the same mapping algorithm. The built-in path saves us renderer code at the cost of items (1) and (2); the savings are not worth it.
   4. (c) shows raw markdown, not rendered — defeats the primary requirement REQ-CORE-005 AC-1.
@@ -676,12 +676,12 @@ Selection state is **transient**: snapshotted in the rendered-view webview at `m
 
 - **Options considered**:
   (a) Single `WebviewPanel` per session, file content swapped in via postMessage on file change.
-  (b) `CustomEditorProvider` registered for an `adopr://` URI scheme; each PR file gets its own native editor tab opened via `vscode.openWith`.
+  (b) `CustomEditorProvider` registered for an `mdpr://` URI scheme; each PR file gets its own native editor tab opened via `vscode.openWith`.
 - **Decision**: (b) — `CustomEditorProvider`.
 - **Rationale**:
-  - Each `adopr://owner/proj/repo/PR-id/path/to/file.md` opens as a normal editor tab, identifiable in tab strip, drag-droppable into split editor groups, closable with `Ctrl+W`, restorable via "Reopen Closed Editor" (subject to VS Code's hot-exit semantics).
+  - Each `mdpr://owner/proj/repo/PR-id/path/to/file.md` opens as a normal editor tab, identifiable in tab strip, drag-droppable into split editor groups, closable with `Ctrl+W`, restorable via "Reopen Closed Editor" (subject to VS Code's hot-exit semantics).
   - Multiple files can be viewed side-by-side, which is essential for design docs that reference each other (a common pattern in monorepos).
-  - The "file" identity flows naturally to `threadCreated` routing: the rendered-view webview that owns the editor of `adopr://...path/file.md` is the one that receives marker updates for that file.
+  - The "file" identity flows naturally to `threadCreated` routing: the rendered-view webview that owns the editor of `mdpr://...path/file.md` is the one that receives marker updates for that file.
   - Per-file lifecycle eliminates the postMessage-driven "swap file content in place" path that (a) requires, which is brittle when the reviewer navigates back to a previously open file.
 - **Tradeoffs**: Slightly more boilerplate (`CustomEditorProvider` interface vs. one-time panel creation); reviewer can accidentally close a file tab and lose any in-flight scroll position (acceptable, drafts live in host).
 - **Reversibility**: Moderate — the rendered-view webview script is identical between (a) and (b); switching only affects the host-side controller and the session model.
@@ -711,7 +711,7 @@ Selection state is **transient**: snapshotted in the rendered-view webview at `m
   - The user pain point is **reading the rendered document** and **selecting text in it** (per requirements clarification driving v0.3 of `requirements.md`). The comment input mechanism is secondary; what matters is that the rendered view is uncluttered and the selection persists visibly while the reviewer composes.
   - A sidebar input means typing happens outside the rendered-view editor, freeing the rendered-view's vertical space and CSS layout from "input pops up next to a block" gymnastics (which would jump scroll position and obscure surrounding content).
   - Selection visibility persistence (REQ-COMMENT-001 AC-5) is straightforward when the rendered view holds the visual highlight via a CSS class controlled by the host — focus can leave for the sidebar without losing the user's mental anchor.
-  - The CommentInputView is reusable across files: opening a different `adopr://` editor doesn't recreate the input; it can hold the in-flight draft regardless of which rendered-view editor is active.
+  - The CommentInputView is reusable across files: opening a different `mdpr://` editor doesn't recreate the input; it can hold the in-flight draft regardless of which rendered-view editor is active.
   - (c) lives in text editors, not webviews; binding it to a synthesized hidden editor to relay through the rendered view is high-friction and was the rationale for rejecting it in v0.1 — that rationale holds.
 - **Tradeoffs**: Reviewer's eye has to dart between the rendered view and the sidebar; mitigated because the selected text is visibly highlighted *and* auto-quoted into the input (REQ-COMMENT-003).
 - **Reversibility**: Moderate — UI layer only, doesn't touch the data model or postMessage discriminators.
@@ -870,7 +870,7 @@ connect-src 'none';
 
 ### Distribution
 
-- v0.1–v0.4: sideload via `.vsix` produced by `vsce package`. Reviewer installs via `code --install-extension adoMdReview-X.Y.Z.vsix` (ASM-008).
+- v0.1–v0.4: sideload via `.vsix` produced by `vsce package`. Reviewer installs via `code --install-extension md-pr-review-X.Y.Z.vsix` (ASM-008).
 - No marketplace presence (CON of personal-use polish target).
 - Future option: private marketplace for team use (out of scope per requirements §2.2).
 
@@ -923,7 +923,7 @@ adomarkdownprreviewer/
     ├── auth-manager.ts
     ├── ado-client.ts
     ├── session-manager.ts
-    ├── adopr-uri.ts             # adopr:// URI parse/build
+    ├── mdpr-uri.ts             # mdpr:// URI parse/build
     ├── renderer/
     │   ├── index.ts             # render() entry
     │   ├── markdown-it-config.ts
@@ -936,7 +936,7 @@ adomarkdownprreviewer/
     │   └── disambiguate.ts      # textBeforeSelection.length disambiguation
     ├── views/
     │   ├── file-tree-provider.ts            # TreeDataProvider for FileTreeView
-    │   ├── custom-editor-provider.ts        # CustomEditorProvider for adopr://
+    │   ├── custom-editor-provider.ts        # CustomEditorProvider for mdpr://
     │   ├── comment-input-view-provider.ts   # WebviewViewProvider for sidebar
     │   ├── csp.ts                           # Shared CSP builder (per-webview)
     │   ├── messages.ts                      # All postMessage type definitions
@@ -1011,7 +1011,7 @@ adomarkdownprreviewer/
 
 ### OQ-8: Built-in markdown preview augmentation — disconfirming spike
 
-- **Question**: Could the rendered-view be implemented via `markdown.previewScripts` + `onDidReceiveMessageFromMarkdownPreview` despite the global-pollution and CSP-ownership concerns documented in §5's first decision? Specifically, is the "scripts no-op for non-`adopr://` URIs" guard sustainable in practice?
+- **Question**: Could the rendered-view be implemented via `markdown.previewScripts` + `onDidReceiveMessageFromMarkdownPreview` despite the global-pollution and CSP-ownership concerns documented in §5's first decision? Specifically, is the "scripts no-op for non-`mdpr://` URIs" guard sustainable in practice?
 - **Options under consideration**: Stick with custom webview (current decision); spike a built-in preview implementation and measure user-visible pollution + CSP behavior with 5 disconfirming scenarios.
 - **Disconfirming scenarios**: (i) 5-file PR with active threads, Mermaid, tables, and nested lists; (ii) reviewer rapidly switches between files (does the raw-markdown editor tab clutter the layout?); (iii) selection in a table cell; (iv) selection in an HTML block; (v) refresh after PR head advance.
 - **What is needed to decide**: Day-of-implementation spike during v0.1; if the built-in path proves clean (no perceived pollution, CSP works with strict policies, selection mapping comparable), revisit decision in v0.2 retrospective.
