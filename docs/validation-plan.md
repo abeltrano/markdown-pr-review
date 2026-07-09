@@ -84,7 +84,7 @@ silently omitted.
   no shared draft state.
 * **Workspace mutation.** Per `CON-006`, the extension never writes files
   to the user's open workspace; all reviewed documents live under the
-  `adopr://` virtual scheme.
+  `mdpr://` virtual scheme.
 * **Local `git` binary integration.** Per `CON-007`, file content is fetched
   exclusively via ADO REST; no shell-out tests are required.
 * **GitHub PRs.** Per `requirements.md` §1 / `CON-002`, GitHub support is
@@ -102,7 +102,7 @@ The validation environment assumes:
   amend draft PRs containing Markdown files.
 * A "fixture PR" prepared in that organisation with the following
   characteristics, used by manual E2E tests:
-  - Title contains the magic string `[adopr-fixture]` so it is easy to find.
+  - Title contains the magic string `[mdpr-fixture]` so it is easy to find.
   - At least three changed Markdown files of varied size: a small file
     (~5 KB, plain), a medium file (~80 KB, mixed prose/lists/code), and a
     large file (~200 KB, prose-heavy).
@@ -264,7 +264,7 @@ here; the rest are tracked in the design / risk register.
 | RISK-007   | TC-080, TC-082 (CommentInputView reachable and recoverable)                  | Planned |
 | RISK-008   | TC-130, TC-145 (log redaction)                                               | Planned |
 | RISK-009   | TC-038, TC-164 (mermaid version pin and CSP compatibility)                   | Planned |
-| RISK-010   | TC-091, TC-092 (custom-editor `adopr://` works; no scheme conflict)          | Planned |
+| RISK-010   | TC-091, TC-092 (custom-editor `mdpr://` works; no scheme conflict)          | Planned |
 
 ### 4.6 Coverage Gaps
 
@@ -331,7 +331,7 @@ Legend:
 * Expected: each input throws (or returns a structured error) carrying a non-redacted message; no input is silently accepted as the wrong PR.
 * Priority: H  · Type: F  · Level: U  · Phase: v0.2
 
-**TC-004** — `adopr.openPr` command surfaces an inputBox when no URL provided
+**TC-004** — `markdownPrReview.openPullRequest` command surfaces an inputBox when no URL provided
 * Requirement(s): REQ-CORE-002 AC-1, AC-2
 * Preconditions: Extension activated in Extension Development Host.
 * Steps:
@@ -339,11 +339,11 @@ Legend:
 * Expected: a VS Code `showInputBox` appears with placeholder text mentioning an ADO PR URL.
 * Priority: H  · Type: F  · Level: I  · Phase: v0.2
 
-**TC-005** — `adopr.openPr` command accepts URL argument
+**TC-005** — `markdownPrReview.openPullRequest` command accepts URL argument
 * Requirement(s): REQ-CORE-002 AC-2
 * Preconditions: As TC-004.
 * Steps:
-  1. Programmatically execute `vscode.commands.executeCommand('adopr.openPr', '<fixture-pr-url>')`.
+  1. Programmatically execute `vscode.commands.executeCommand('markdownPrReview.openPullRequest', '<fixture-pr-url>')`.
 * Expected: No inputBox is shown; the file picker (`FileTreeView`) becomes visible populated with the fixture PR's files.
 * Priority: M  · Type: F  · Level: I  · Phase: v0.2
 
@@ -354,7 +354,7 @@ Legend:
 * Preconditions: VS Code account session previously signed-out for the
   Microsoft provider.
 * Steps:
-  1. Trigger any flow that needs a token (e.g. `adopr.openPr`).
+  1. Trigger any flow that needs a token (e.g. `markdownPrReview.openPullRequest`).
 * Expected: `vscode.authentication.getSession('microsoft', ['499b84ac-1321-427f-aa17-267ca6975798/.default'], { createIfNone: true })` is invoked; the VS Code OS auth flow appears; on success a session token is cached in extension memory.
 * Priority: C  · Type: F  · Level: I  · Phase: v0.2
 
@@ -530,11 +530,11 @@ Legend:
 * Expected: each diff region's first block has a gutter marker (added/removed/modified, distinct colours / icons per `design.md`); markers align with their block.
 * Priority: M  · Type: F  · Level: I  · Phase: v0.3
 
-**TC-044** — Toggle command hides/shows diff annotations
+**TC-044** — New file added in PR: every block annotated `added`
 * Requirement(s): REQ-DIFF-002 AC-2
-* Preconditions: TC-043 result on screen.
-* Steps: run the `adopr.toggleDiffAnnotations` command.
-* Expected: markers disappear (and re-appear on toggling back) within one frame; no full re-render is required.
+* Preconditions: PR whose changed set includes a markdown file that does not exist at the merge-base (newly added in the PR).
+* Steps: open that file in rendered view.
+* Expected: because the file is absent at the merge-base, every rendered block carries `data-diff-state="added"` (green gutter), per REQ-DIFF-002 AC-2.
 * Priority: M  · Type: F  · Level: I  · Phase: v0.3
 
 ### 5.6 Selection Mapper (REQ-COMMENT-002, RISK-001, CON-004, OQ-9)
@@ -630,13 +630,13 @@ each `mappingMode` enum value MUST have at least one unit test.
 * Expected: `'undefined'`; no console error indicating CSP refused inline script (the script must have been escaped by the renderer before reaching the DOM, not merely blocked by CSP — both layers are required).
 * Priority: C  · Type: S  · Level: E  · Phase: v0.2
 
-### 5.8 CustomEditorProvider & `adopr://` URI (REQ-CORE-004, RISK-010)
+### 5.8 CustomEditorProvider & `mdpr://` URI (REQ-CORE-004, RISK-010)
 
-**TC-070** — CustomEditorProvider claims `adopr://` URIs
+**TC-070** — CustomEditorProvider claims `mdpr://` URIs
 * Requirement(s): REQ-CORE-004 AC-1, RISK-010
 * Preconditions: Extension activated.
 * Steps:
-  1. Call `vscode.commands.executeCommand('vscode.openWith', vscode.Uri.parse('adopr://contoso/MyProj/_git/MyRepo/pullrequest/4242/file/docs/design.md@<sha>'), 'adopr.renderedView')`.
+  1. Call `vscode.commands.executeCommand('vscode.openWith', vscode.Uri.parse('mdpr://contoso/MyProj/_git/MyRepo/pullrequest/4242/file/docs/design.md@<sha>'), 'markdownPrReview.renderedView')`.
 * Expected: a new editor tab opens; tab label is the file's basename; the rendered view appears within 2 s (per REQ-CORE-001 AC-2 family budget).
 * Priority: H  · Type: F  · Level: I  · Phase: v0.2
 
@@ -667,7 +667,7 @@ each `mappingMode` enum value MUST have at least one unit test.
 * Requirement(s): REQ-CORE-002 AC-2
 * Preconditions: Fixture PR with files in two directories.
 * Steps: open PR via TC-005; observe the `ADO PR: Files` view in the side bar.
-* Expected: every changed file appears, grouped under a directory node; clicking a file invokes `vscode.openWith` with the appropriate `adopr://` URI.
+* Expected: every changed file appears, grouped under a directory node; clicking a file invokes `vscode.openWith` with the appropriate `mdpr://` URI.
 * Priority: H  · Type: F  · Level: I  · Phase: v0.2
 
 **TC-092** — Non-markdown files appear but are flagged "not rendered here"
@@ -691,7 +691,7 @@ each `mappingMode` enum value MUST have at least one unit test.
 * Requirement(s): REQ-COMMENT-001 AC-3, AC-4, REQ-COMMENT-003 AC-1
 * Preconditions: Rendered view open; user has a `precise` selection over the phrase "the quick brown fox" (19 chars).
 * Steps:
-  1. Trigger the `adopr.addComment` command (or the equivalent keybinding from TC-125).
+  1. Trigger the `markdownPrReview.addComment` command (or the equivalent keybinding from TC-125).
 * Expected: the CommentInputView becomes visible in its declared view container (per `design.md` §4.1.3); the quoted-text region displays the exact selected phrase byte-for-byte; the body textarea is empty and receives focus; the Submit button is enabled only after at least one character is entered into the body.
 * Priority: C  · Type: F  · Level: I  · Phase: v0.2
 
@@ -777,7 +777,7 @@ each `mappingMode` enum value MUST have at least one unit test.
 
 **TC-110** — Watcher polls at the configured interval
 * Requirement(s): REQ-ERR-002 AC-1, AC-3
-* Preconditions: Mock ADO client; setting `adopr.stalePollIntervalSeconds` set to `15` (the documented minimum).
+* Preconditions: Mock ADO client; setting `markdownPrReview.staleCommitPollSeconds` set to `15` (the documented minimum).
 * Steps: observe `GET …/pullrequests/{id}` calls for 2 minutes.
 * Expected: between 7 and 9 polls occur (boundary tolerance ± 1 per minute); no polls when interval is set to `0` (disabled).
 * Priority: H  · Type: F  · Level: I  · Phase: v0.4
@@ -819,18 +819,18 @@ each `mappingMode` enum value MUST have at least one unit test.
 * Expected: status bar item is removed within 1 second.
 * Priority: L  · Type: F  · Level: I  · Phase: v0.3
 
-**TC-123** — Settings register under `adopr.*` namespace
+**TC-123** — Settings register under `markdownPrReview.*` namespace
 * Requirement(s): REQ-UX-002 AC-1
 * Preconditions: Extension installed.
-* Steps: open VS Code Settings; search for "adopr".
-* Expected: at minimum `adopr.stalePollIntervalSeconds`, `adopr.diffAnnotations.enabled`, `adopr.maxFileSizeMb` (or equivalents declared in `package.json`) appear with descriptions.
+* Steps: open VS Code Settings; search for "markdownPrReview".
+* Expected: `markdownPrReview.defaultOrganization`, `markdownPrReview.defaultProject`, and `markdownPrReview.staleCommitPollSeconds` (as declared in `package.json`) appear with descriptions.
 * Priority: L  · Type: F  · Level: Stc · Phase: v0.3
 
-**TC-124** — Setting changes take effect without reload
+**TC-124** — Bare PR id resolves when a default org and project are configured
 * Requirement(s): REQ-UX-002 AC-2
-* Preconditions: PR open; diff annotations enabled.
-* Steps: toggle `adopr.diffAnnotations.enabled` to `false`.
-* Expected: annotations disappear from open tabs within 1 s; re-enable restores them.
+* Preconditions: `markdownPrReview.defaultOrganization` and `markdownPrReview.defaultProject` are set.
+* Steps: run `markdownPrReview.openPullRequest` and enter a bare numeric PR id (no URL).
+* Expected: the extension resolves the PR from the configured org/project and opens the review session, per REQ-UX-002 AC-2.
 * Priority: M  · Type: F  · Level: I  · Phase: v0.3
 
 **TC-125** — Default keybinding for "Add Comment" works
@@ -1022,7 +1022,7 @@ each `mappingMode` enum value MUST have at least one unit test.
 * Steps:
   1. Run `npm run package` to produce `.vsix`.
   2. Install in a fresh VS Code profile (`--profile temp`).
-  3. Trigger `adopr.openPr`.
+  3. Trigger `markdownPrReview.openPullRequest`.
 * Expected: extension activates; no missing-dependency errors; commands reachable.
 * Priority: H  · Type: F  · Level: E  · Phase: v0.4
 
