@@ -119,7 +119,7 @@ jobs:
           fi
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -216,7 +216,7 @@ jobs:
           name: release-bundle
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           # This job does not check out the repo, so .nvmrc is unavailable —
           # pin the same major line as .nvmrc / engines.node.
